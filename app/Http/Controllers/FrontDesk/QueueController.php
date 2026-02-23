@@ -22,8 +22,21 @@ class QueueController extends Controller
     public function index()
     {
         $categories = ServiceCategory::orderBy('name')->get();
-        return Inertia::render('FrontDesk/CreateQueue', [
+        $waitingQueues = \App\Models\Queue::with('serviceCategory')
+            ->where('status', \App\Models\Queue::STATUS_WAITING)
+            ->orderBy('created_at', 'desc')
+            ->get();
+        
+        $totalWaiting = \App\Models\Queue::where('status', \App\Models\Queue::STATUS_WAITING)->count();
+        $totalServedToday = \App\Models\Queue::whereDate('created_at', today())
+            ->where('status', \App\Models\Queue::STATUS_COMPLETED)
+            ->count();
+        
+        return Inertia::render('FrontDesk/Dashboard', [
             'serviceCategories' => $categories,
+            'waitingQueues' => $waitingQueues,
+            'totalWaiting' => $totalWaiting,
+            'totalServedToday' => $totalServedToday,
         ]);
     }
 
@@ -31,10 +44,15 @@ class QueueController extends Controller
     {
         $queue = $this->queueService->createQueue($request->validated());
         
-        $categories = ServiceCategory::orderBy('name')->get();
-        return Inertia::render('FrontDesk/CreateQueue', [
-            'serviceCategories' => $categories,
-            'queueNumber' => $queue->queue_number,
+        return redirect()->route('frontdesk.queues.print', $queue);
+    }
+
+    public function print(\App\Models\Queue $queue)
+    {
+        $queue->load('serviceCategory');
+        
+        return Inertia::render('FrontDesk/PrintTicket', [
+            'queue' => $queue,
         ]);
     }
 }

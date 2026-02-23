@@ -1,51 +1,243 @@
 <script setup>
-import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import { router } from '@inertiajs/vue3';
+import { ref } from 'vue';
 
-defineProps({
-  window: Object,
-  current: Object,
-  next: Array,
-})
+const props = defineProps({
+    window: Object,
+    current: Object,
+    next: Array,
+    recentLogs: Array,
+});
+
+const processing = ref(false);
+
+const callNext = () => {
+    if (!props.window) {
+        alert('No window assigned!');
+        return;
+    }
+    
+    processing.value = true;
+    router.post(route('cashier.callNext'), {
+        window_id: props.window.id,
+    }, {
+        preserveScroll: true,
+        onSuccess: () => {
+            processing.value = false;
+            router.reload({ only: ['current', 'next', 'recentLogs'] });
+        },
+        onError: () => {
+            processing.value = false;
+        }
+    });
+};
+
+const skip = () => {
+    if (!props.current) return;
+    
+    if (!confirm('Skip this queue?')) return;
+    
+    processing.value = true;
+    router.post(route('cashier.skip', props.current.id), {}, {
+        preserveScroll: true,
+        onSuccess: () => {
+            processing.value = false;
+            router.reload({ only: ['current', 'next', 'recentLogs'] });
+        },
+        onError: () => {
+            processing.value = false;
+        }
+    });
+};
+
+const recall = () => {
+    if (!props.current) return;
+    
+    processing.value = true;
+    router.post(route('cashier.recall', props.current.id), {}, {
+        preserveScroll: true,
+        onSuccess: () => {
+            processing.value = false;
+            router.reload({ only: ['current', 'next', 'recentLogs'] });
+        },
+        onError: () => {
+            processing.value = false;
+        }
+    });
+};
+
+const complete = () => {
+    if (!props.current) return;
+    
+    if (!confirm('Mark this queue as completed?')) return;
+    
+    processing.value = true;
+    router.post(route('cashier.complete', props.current.id), {}, {
+        preserveScroll: true,
+        onSuccess: () => {
+            processing.value = false;
+            router.reload({ only: ['current', 'next', 'recentLogs'] });
+        },
+        onError: () => {
+            processing.value = false;
+        }
+    });
+};
+
+const getStatusColor = (status) => {
+    switch(status) {
+        case 'completed': return 'bg-green-100 text-green-800';
+        case 'skipped': return 'bg-gray-100 text-gray-800';
+        case 'called': return 'bg-blue-100 text-blue-800';
+        default: return 'bg-yellow-100 text-yellow-800';
+    }
+};
+
+const formatTime = (datetime) => {
+    return new Date(datetime).toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+};
 </script>
 
 <template>
-  <div class="p-4">
-    <h1 class="text-2xl font-bold">Cashier Dashboard</h1>
-    <div class="mt-4">
-      <p>Window: {{ window?.name ?? 'Unassigned' }}</p>
-      <p>Now Serving: {{ current?.queue_number ?? '—' }}</p>
-      <p>Next: <span v-if="next.length">{{ next[0].queue_number }}</span></p>
-    </div>
-  </div>
+    <AuthenticatedLayout title="Cashier Dashboard">
+        <div v-if="!window" class="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
+            <p class="text-yellow-800 font-semibold">You are not assigned to any cashier window.</p>
+            <p class="text-yellow-700 text-sm mt-2">Please contact an administrator.</p>
+        </div>
 
-  <div class="mt-3 space-y-1">
-            <ResponsiveNavLink
-                :href="route('logout')"
-                method="post"
-                as="button"
-            >
-                Log Out
-            </ResponsiveNavLink>
-</div>
+        <div v-else class="space-y-6">
+            <!-- Section 1: Assigned Window Display -->
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <h2 class="text-xl font-semibold text-[#800000] mb-2">Assigned Window</h2>
+                <p class="text-4xl font-bold text-[#800000]">{{ window.name }}</p>
+            </div>
 
-   <div class="p-4">
-    <h1 class="text-2xl font-bold">Cashier</h1>
+            <!-- Section 2: Current Serving Queue -->
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <h2 class="text-xl font-semibold text-[#800000] mb-4">Now Serving</h2>
+                
+                <div v-if="current" class="space-y-4">
+                    <div class="bg-[#800000] text-white rounded-lg p-8 text-center">
+                        <p class="text-sm mb-2">Queue Number</p>
+                        <p class="text-6xl font-bold">{{ current.queue_number }}</p>
+                    </div>
+                    <div class="text-center text-gray-600">
+                        <p class="text-sm">Service: {{ current.service_category?.name || 'N/A' }}</p>
+                        <p class="text-sm">Client: {{ current.client_name || 'Walk-in' }}</p>
+                    </div>
+                </div>
 
-    <div class="mt-4">
-      <p><strong>Window:</strong> {{ window?.name ?? 'Unassigned' }}</p>
-      <p class="mt-2"><strong>Now Serving:</strong> {{ current?.queue_number ?? '—' }}</p>
+                <div v-else class="bg-gray-50 rounded-lg p-8 text-center">
+                    <p class="text-gray-500 text-lg">No active queue</p>
+                    <p class="text-gray-400 text-sm mt-2">Click "Call Next" to serve the next queue</p>
+                </div>
+            </div>
 
-      <h3 class="mt-4">Next</h3>
-      <ul>
-        <li v-for="q in next" :key="q.id">{{ q.queue_number }} — {{ q.client_name ?? 'Guest' }}</li>
-      </ul>
-    </div>
-  </div>
+            <!-- Section 3: Queue Control Buttons -->
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <h2 class="text-xl font-semibold text-[#800000] mb-4">Queue Controls</h2>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <!-- Call Next - Primary Action -->
+                    <button
+                        @click="callNext"
+                        :disabled="processing"
+                        class="bg-[#FFC107] hover:bg-[#FFB300] text-[#800000] px-6 py-4 rounded-lg font-semibold transition disabled:opacity-50 text-lg"
+                    >
+                        Call Next
+                    </button>
 
-  <div class="p-4">
-    <h2 class="text-lg">{{ window.name }}</h2>
-    <div class="mt-2">
-      <p>Current: {{ queue?.queue_number ?? '—' }}</p>
-    </div>
-  </div>
+                    <!-- Skip -->
+                    <button
+                        @click="skip"
+                        :disabled="processing || !current"
+                        class="border-2 border-[#800000] hover:bg-[#800000] hover:text-white text-[#800000] px-6 py-4 rounded-lg font-semibold transition disabled:opacity-50"
+                    >
+                        Skip
+                    </button>
+
+                    <!-- Recall -->
+                    <button
+                        @click="recall"
+                        :disabled="processing || !current"
+                        class="border-2 border-[#800000] hover:bg-[#800000] hover:text-white text-[#800000] px-6 py-4 rounded-lg font-semibold transition disabled:opacity-50"
+                    >
+                        Recall
+                    </button>
+
+                    <!-- Complete -->
+                    <button
+                        @click="complete"
+                        :disabled="processing || !current"
+                        class="border-2 border-green-600 hover:bg-green-600 hover:text-white text-green-600 px-6 py-4 rounded-lg font-semibold transition disabled:opacity-50"
+                    >
+                        Complete
+                    </button>
+                </div>
+            </div>
+
+            <!-- Next 5 Queues Preview -->
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <h2 class="text-xl font-semibold text-[#800000] mb-4">Next in Queue</h2>
+                
+                <div v-if="next.length > 0" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                    <div
+                        v-for="queue in next"
+                        :key="queue.id"
+                        class="bg-gray-50 rounded-lg p-4 text-center"
+                    >
+                        <p class="text-lg font-bold text-[#800000]">{{ queue.queue_number }}</p>
+                        <p class="text-xs text-gray-600 mt-1">{{ queue.service_category?.name || 'N/A' }}</p>
+                    </div>
+                </div>
+
+                <div v-else class="text-center py-6 text-gray-500">
+                    No queues waiting
+                </div>
+            </div>
+
+            <!-- Section 4: Recent Queue Logs -->
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <h2 class="text-xl font-semibold text-[#800000] mb-4">Recent Activity</h2>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-gray-200">
+                                <th class="text-left py-3 px-4 font-semibold text-gray-700">Queue Number</th>
+                                <th class="text-left py-3 px-4 font-semibold text-gray-700">Service</th>
+                                <th class="text-left py-3 px-4 font-semibold text-gray-700">Status</th>
+                                <th class="text-left py-3 px-4 font-semibold text-gray-700">Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-if="recentLogs.length === 0">
+                                <td colspan="4" class="text-center py-8 text-gray-500">
+                                    No recent activity
+                                </td>
+                            </tr>
+                            <tr
+                                v-for="log in recentLogs"
+                                :key="log.id"
+                                class="border-b border-gray-100 hover:bg-gray-50"
+                            >
+                                <td class="py-3 px-4 font-semibold text-[#800000]">{{ log.queue_number }}</td>
+                                <td class="py-3 px-4">{{ log.service_category?.name || 'N/A' }}</td>
+                                <td class="py-3 px-4">
+                                    <span :class="getStatusColor(log.status)" class="px-3 py-1 rounded-full text-sm capitalize">
+                                        {{ log.status }}
+                                    </span>
+                                </td>
+                                <td class="py-3 px-4 text-gray-600">{{ formatTime(log.updated_at) }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </AuthenticatedLayout>
 </template>

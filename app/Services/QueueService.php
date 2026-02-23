@@ -27,6 +27,10 @@ class QueueService
             $date = now()->toDateString();
             $serviceCategoryId = $data['service_category_id'] ?? null;
 
+            // Get the service category to use its prefix
+            $serviceCategory = \App\Models\ServiceCategory::find($serviceCategoryId);
+            $prefix = $serviceCategory?->prefix ?? 'Q';
+
             $counterQuery = QueueCounter::where('date', $date)
                 ->where('service_category_id', $serviceCategoryId);
 
@@ -43,14 +47,15 @@ class QueueService
             $counter->last_number = $counter->last_number + 1;
             $counter->save();
 
-            $number = str_pad($counter->last_number, 4, '0', STR_PAD_LEFT);
-            $queueNumber = sprintf('BEC-%s-%s', now()->format('Y'), $number);
+            $number = str_pad($counter->last_number, 3, '0', STR_PAD_LEFT);
+            $queueNumber = sprintf('%s-%s', $prefix, $number);
 
             $queue = $this->repo->create([
                 'queue_number' => $queueNumber,
                 'service_category_id' => $serviceCategoryId,
                 'status' => Queue::STATUS_WAITING,
                 'client_name' => $data['client_name'] ?? null,
+                'client_type' => $data['client_type'] ?? 'student',
                 'phone' => $data['phone'] ?? null,
                 'note' => $data['note'] ?? null,
             ]);

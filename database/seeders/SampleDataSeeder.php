@@ -14,13 +14,18 @@ class SampleDataSeeder extends Seeder
     public function run(): void
     {
         $categories = [
-            ['name' => 'Payments', 'description' => 'Tuition and fees', 'avg_service_seconds' => 300],
-            ['name' => 'Inquiries', 'description' => 'General inquiries', 'avg_service_seconds' => 180],
-            ['name' => 'Enrollment', 'description' => 'Enrollment processing', 'avg_service_seconds' => 420],
+            ['name' => 'Tuition Payment', 'prefix' => 'T', 'description' => 'Tuition and payment processing', 'avg_service_seconds' => 300],
+            ['name' => 'Clearance', 'prefix' => 'C', 'description' => 'Clearance processing', 'avg_service_seconds' => 240],
+            ['name' => 'Enrollment', 'prefix' => 'E', 'description' => 'Enrollment and registration', 'avg_service_seconds' => 420],
+            ['name' => 'Inquiries', 'prefix' => 'I', 'description' => 'General inquiries and information', 'avg_service_seconds' => 180],
+            ['name' => 'Others', 'prefix' => 'O', 'description' => 'Other services', 'avg_service_seconds' => 240],
         ];
 
         foreach ($categories as $c) {
-            ServiceCategory::firstOrCreate(['name' => $c['name']], $c);
+            ServiceCategory::updateOrCreate(
+                ['prefix' => $c['prefix']], 
+                $c
+            );
         }
 
         // create 3 cashier windows

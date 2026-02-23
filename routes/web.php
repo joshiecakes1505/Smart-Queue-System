@@ -12,16 +12,24 @@ use App\Http\Controllers\Display\DisplayController as DisplayController;
 use App\Http\Controllers\Api\QRCodeController as QRCodeController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-    ]);
-});
+    // If already authenticated, redirect to appropriate dashboard
+    if (Auth::check()) {
+        $roleName = Auth::user()->role?->name;
+        return match ($roleName) {
+            'admin' => redirect()->route('admin.dashboard'),
+            'frontdesk' => redirect()->route('frontdesk.queues.index'),
+            'cashier' => redirect()->route('cashier.index'),
+            default => redirect()->route('login'),
+        };
+    }
+    
+    // Otherwise show landing page
+    return Inertia::render('Landing');
+})->name('landing');
 
 Route::get('/dashboard', function () {
     return Inertia::render('Dashboard');
@@ -47,6 +55,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 Route::middleware(['auth', 'role:frontdesk'])->prefix('frontdesk')->name('frontdesk.')->group(function () {
     Route::get('queues', [FrontDeskQueueController::class, 'index'])->name('queues.index');
     Route::post('queues', [FrontDeskQueueController::class, 'store'])->name('queues.store');
+    Route::get('queues/{queue}/print', [FrontDeskQueueController::class, 'print'])->name('queues.print');
 });
 
 // Cashier routes

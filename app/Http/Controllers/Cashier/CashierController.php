@@ -28,23 +28,34 @@ class CashierController extends Controller
 
         $current = null;
         $next = collect();
+        $recentLogs = collect();
 
         if ($window) {
-            $current = QueueModel::where('cashier_window_id', $window->id)
+            $current = QueueModel::with('serviceCategory')
+                ->where('cashier_window_id', $window->id)
                 ->where('status', QueueModel::STATUS_CALLED)
                 ->orderBy('start_time', 'desc')
                 ->first();
+            
+            $recentLogs = QueueModel::with('serviceCategory')
+                ->where('cashier_window_id', $window->id)
+                ->whereIn('status', [QueueModel::STATUS_COMPLETED, QueueModel::STATUS_SKIPPED])
+                ->orderBy('updated_at', 'desc')
+                ->limit(10)
+                ->get();
         }
 
-        $next = QueueModel::where('status', QueueModel::STATUS_WAITING)
+        $next = QueueModel::with('serviceCategory')
+            ->where('status', QueueModel::STATUS_WAITING)
             ->orderBy('created_at', 'asc')
             ->limit(5)
             ->get();
 
-        return Inertia::render('Cashier/Index', [
+        return Inertia::render('Cashier/Dashboard', [
             'window' => $window,
             'current' => $current,
             'next' => $next,
+            'recentLogs' => $recentLogs,
         ]);
     }
 

@@ -17,6 +17,7 @@ class StoreQueueRequest extends FormRequest
         return [
             'service_category_id' => ['required', 'integer', 'exists:service_categories,id'],
             'client_name' => ['nullable', 'string', 'max:191'],
+            'client_type' => ['required', 'string', 'in:student,parent,visitor'],
             'phone' => ['nullable', 'string', 'max:50'],
             'note' => ['nullable', 'string', 'max:1000'],
         ];

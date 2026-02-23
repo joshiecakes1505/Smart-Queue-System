@@ -17,8 +17,13 @@ Route::middleware('guest')->group(function () {
 
     Route::post('register', [RegisteredUserController::class, 'store']);
 
-    Route::get('login', [AuthenticatedSessionController::class, 'create'])
-        ->name('login');
+    // Use Welcome page as login page
+    Route::get('login', function () {
+        return \Inertia\Inertia::render('Welcome', [
+            'canResetPassword' => \Illuminate\Support\Facades\Route::has('password.request'),
+            'status' => session('status'),
+        ]);
+    })->name('login');
 
     Route::post('login', [AuthenticatedSessionController::class, 'store']);
 

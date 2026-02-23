@@ -23,6 +23,7 @@ class Queue extends Model
         'start_time',
         'end_time',
         'client_name',
+        'client_type',
         'phone',
         'note',
     ];
