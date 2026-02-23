@@ -4,6 +4,7 @@ import { usePolling } from '@/Composables/usePolling'
 import { Head } from '@inertiajs/vue3'
 
 const data = ref({ windows: [], next_queues: [], timestamp: null })
+const refreshIntervalMs = 2000
 
 const fetchData = async () => {
   try {
@@ -14,7 +15,7 @@ const fetchData = async () => {
   }
 }
 
-usePolling(fetchData, 5000)
+usePolling(fetchData, refreshIntervalMs)
 
 const formatTime = (timestamp) => {
   if (!timestamp) return '—';
@@ -112,7 +113,7 @@ const formatTime = (timestamp) => {
     <!-- Footer -->
     <footer class="bg-gray-100 py-4 mt-12">
       <div class="container mx-auto px-8 text-center">
-        <p class="text-sm text-gray-600">Auto-refreshing every 5 seconds</p>
+        <p class="text-sm text-gray-600">Auto-refreshing every 2 seconds</p>
       </div>
     </footer>
   </div>

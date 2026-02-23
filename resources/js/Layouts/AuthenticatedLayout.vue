@@ -1,5 +1,7 @@
 <script setup>
+import { computed } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
+import { usePage } from '@inertiajs/vue3';
 
 defineProps({
     title: {
@@ -9,8 +11,37 @@ defineProps({
 });
 
 const logout = () => {
-    router.post(route('logout'));
+    router.post(route('logout'), { role: roleName.value });
 };
+
+const page = usePage();
+
+const roleName = computed(() => page.props.auth?.user?.role_name || null);
+
+const navigationLinks = computed(() => {
+    if (roleName.value === 'admin') {
+        return [
+            { label: 'Admin Dashboard', href: route('admin.dashboard') },
+            { label: 'Manage Users', href: route('admin.users.index') },
+            { label: 'Service Categories', href: route('admin.service-categories.index') },
+            { label: 'Daily Reports', href: route('admin.reports.daily') },
+        ];
+    }
+
+    if (roleName.value === 'frontdesk') {
+        return [
+            { label: 'Front Desk Dashboard', href: route('frontdesk.queues.index') },
+        ];
+    }
+
+    if (roleName.value === 'cashier') {
+        return [
+            { label: 'Cashier Dashboard', href: route('cashier.index') },
+        ];
+    }
+
+    return [];
+});
 </script>
 
 <template>
@@ -37,6 +68,24 @@ const logout = () => {
                             Logout
                         </button>
                     </div>
+                </div>
+
+                <div class="mt-4 pt-3 border-t border-white/20 flex flex-wrap gap-2">
+                    <Link
+                        v-for="link in navigationLinks"
+                        :key="link.href"
+                        :href="link.href"
+                        class="px-3 py-1.5 rounded-lg text-sm bg-white/10 hover:bg-white/20 transition"
+                    >
+                        {{ link.label }}
+                    </Link>
+
+                    <Link
+                        :href="route('display.index')"
+                        class="px-3 py-1.5 rounded-lg text-sm bg-[#FFC107] text-[#800000] hover:bg-[#FFB300] transition"
+                    >
+                        Display Board
+                    </Link>
                 </div>
             </div>
         </nav>

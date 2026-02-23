@@ -2,35 +2,73 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { router } from '@inertiajs/vue3';
 import { ref } from 'vue';
+import { usePolling } from '@/Composables/usePolling';
 
 const props = defineProps({
     window: Object,
     current: Object,
     next: Array,
     recentLogs: Array,
+    skippedEligible: {
+        type: Array,
+        default: () => [],
+    },
 });
 
 const processing = ref(false);
+const feedback = ref({ type: '', message: '' });
+
+const setFeedback = (type, message) => {
+    feedback.value = { type, message };
+};
+
+const feedbackClass = (type) => {
+    if (type === 'success') return 'bg-green-50 border-green-200 text-green-800';
+    if (type === 'warning') return 'bg-yellow-50 border-yellow-200 text-yellow-800';
+    if (type === 'error') return 'bg-red-50 border-red-200 text-red-800';
+    return 'bg-gray-50 border-gray-200 text-gray-800';
+};
+
+const refreshData = () => {
+    router.reload({ only: ['current', 'next', 'recentLogs', 'skippedEligible'] });
+};
 
 const callNext = () => {
     if (!props.window) {
-        alert('No window assigned!');
+        setFeedback('error', 'No cashier window assigned. Please contact an administrator.');
         return;
     }
-    
+
+    if (props.current) {
+        setFeedback('warning', 'Finish the current queue before calling the next one.');
+        return;
+    }
+
     processing.value = true;
-    router.post(route('cashier.callNext'), {
+
+    window.axios.post(route('cashier.callNext'), {
         window_id: props.window.id,
-    }, {
-        preserveScroll: true,
-        onSuccess: () => {
+    })
+        .then((response) => {
+            if (response.data?.status === 'ok') {
+                setFeedback('success', 'Next queue has been called.');
+                refreshData();
+                return;
+            }
+
+            if (response.data?.status === 'empty') {
+                setFeedback('warning', 'No waiting queues available.');
+                return;
+            }
+
+            setFeedback('error', 'Unable to call next queue.');
+        })
+        .catch(() => {
+            setFeedback('error', 'An error occurred while calling the next queue.');
+        })
+        .finally(() => {
             processing.value = false;
-            router.reload({ only: ['current', 'next', 'recentLogs'] });
-        },
-        onError: () => {
-            processing.value = false;
-        }
-    });
+        });
 };
 
 const skip = () => {
@@ -39,32 +77,46 @@ const skip = () => {
     if (!confirm('Skip this queue?')) return;
     
     processing.value = true;
-    router.post(route('cashier.skip', props.current.id), {}, {
-        preserveScroll: true,
-        onSuccess: () => {
+
+    window.axios.post(route('cashier.skip', props.current.id))
+        .then((response) => {
+            if (response.data?.status === 'ok') {
+                setFeedback('success', 'Queue has been skipped.');
+                refreshData();
+                return;
+            }
+
+            setFeedback('error', 'Queue was not found.');
+        })
+        .catch(() => {
+            setFeedback('error', 'An error occurred while skipping the queue.');
+        })
+        .finally(() => {
             processing.value = false;
-            router.reload({ only: ['current', 'next', 'recentLogs'] });
-        },
-        onError: () => {
-            processing.value = false;
-        }
-    });
+        });
 };
 
 const recall = () => {
     if (!props.current) return;
     
     processing.value = true;
-    router.post(route('cashier.recall', props.current.id), {}, {
-        preserveScroll: true,
-        onSuccess: () => {
+
+    window.axios.post(route('cashier.recall', props.current.id))
+        .then((response) => {
+            if (response.data?.status === 'ok') {
+                setFeedback('success', 'Queue has been recalled.');
+                refreshData();
+                return;
+            }
+
+            setFeedback('error', 'Queue was not found.');
+        })
+        .catch(() => {
+            setFeedback('error', 'An error occurred while recalling the queue.');
+        })
+        .finally(() => {
             processing.value = false;
-            router.reload({ only: ['current', 'next', 'recentLogs'] });
-        },
-        onError: () => {
-            processing.value = false;
-        }
-    });
+        });
 };
 
 const complete = () => {
@@ -73,16 +125,52 @@ const complete = () => {
     if (!confirm('Mark this queue as completed?')) return;
     
     processing.value = true;
-    router.post(route('cashier.complete', props.current.id), {}, {
-        preserveScroll: true,
-        onSuccess: () => {
+
+    window.axios.post(route('cashier.complete', props.current.id))
+        .then((response) => {
+            if (response.data?.status === 'ok') {
+                setFeedback('success', 'Queue has been marked as completed.');
+                refreshData();
+                return;
+            }
+
+            setFeedback('error', 'Queue was not found.');
+        })
+        .catch(() => {
+            setFeedback('error', 'An error occurred while completing the queue.');
+        })
+        .finally(() => {
             processing.value = false;
-            router.reload({ only: ['current', 'next', 'recentLogs'] });
-        },
-        onError: () => {
+        });
+};
+
+const reinstate = (queue) => {
+    if (!queue) return;
+
+    if (queue.skip_count >= 2 || queue.is_reinstated) {
+        setFeedback('warning', 'Queue is no longer eligible for reinstatement.');
+        return;
+    }
+
+    processing.value = true;
+
+    window.axios.post(route('cashier.reinstate', queue.id))
+        .then((response) => {
+            if (response.data?.status === 'ok') {
+                setFeedback('success', 'Queue has been reinstated and returned to waiting.');
+                refreshData();
+                return;
+            }
+
+            setFeedback('error', response.data?.message || 'Queue is not eligible for reinstatement.');
+        })
+        .catch((error) => {
+            const message = error?.response?.data?.message || 'An error occurred while reinstating the queue.';
+            setFeedback('error', message);
+        })
+        .finally(() => {
             processing.value = false;
-        }
-    });
+        });
 };
 
 const getStatusColor = (status) => {
@@ -100,6 +188,14 @@ const formatTime = (datetime) => {
         minute: '2-digit',
     });
 };
+
+usePolling(() => {
+    return router.reload({
+        only: ['window', 'current', 'next', 'recentLogs', 'skippedEligible'],
+        preserveState: true,
+        preserveScroll: true,
+    });
+}, 2000);
 </script>
 
 <template>
@@ -140,12 +236,20 @@ const formatTime = (datetime) => {
             <!-- Section 3: Queue Control Buttons -->
             <div class="bg-white rounded-lg shadow-sm p-6">
                 <h2 class="text-xl font-semibold text-[#800000] mb-4">Queue Controls</h2>
+
+                <div
+                    v-if="feedback.message"
+                    :class="feedbackClass(feedback.type)"
+                    class="mb-4 border rounded-lg px-4 py-3 text-sm"
+                >
+                    {{ feedback.message }}
+                </div>
                 
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     <!-- Call Next - Primary Action -->
                     <button
                         @click="callNext"
-                        :disabled="processing"
+                        :disabled="processing || !!current"
                         class="bg-[#FFC107] hover:bg-[#FFB300] text-[#800000] px-6 py-4 rounded-lg font-semibold transition disabled:opacity-50 text-lg"
                     >
                         Call Next
@@ -155,7 +259,7 @@ const formatTime = (datetime) => {
                     <button
                         @click="skip"
                         :disabled="processing || !current"
-                        class="border-2 border-[#800000] hover:bg-[#800000] hover:text-white text-[#800000] px-6 py-4 rounded-lg font-semibold transition disabled:opacity-50"
+                        class="border-2 border-gray-500 hover:bg-gray-500 hover:text-white text-gray-600 px-6 py-4 rounded-lg font-semibold transition disabled:opacity-50"
                     >
                         Skip
                     </button>
@@ -173,10 +277,50 @@ const formatTime = (datetime) => {
                     <button
                         @click="complete"
                         :disabled="processing || !current"
-                        class="border-2 border-green-600 hover:bg-green-600 hover:text-white text-green-600 px-6 py-4 rounded-lg font-semibold transition disabled:opacity-50"
+                        class="border-2 border-[#800000] hover:bg-[#800000] hover:text-white text-[#800000] px-6 py-4 rounded-lg font-semibold transition disabled:opacity-50"
                     >
                         Complete
                     </button>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <h2 class="text-xl font-semibold text-[#800000] mb-4">Skipped Queues (Eligible for Reinstatement)</h2>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-gray-200">
+                                <th class="text-left py-3 px-4 font-semibold text-gray-700">Queue Number</th>
+                                <th class="text-left py-3 px-4 font-semibold text-gray-700">Service Category</th>
+                                <th class="text-left py-3 px-4 font-semibold text-gray-700">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-if="skippedEligible.length === 0">
+                                <td colspan="3" class="text-center py-8 text-gray-500">
+                                    No eligible skipped queues
+                                </td>
+                            </tr>
+                            <tr
+                                v-for="queue in skippedEligible"
+                                :key="queue.id"
+                                class="border-b border-gray-100 hover:bg-gray-50"
+                            >
+                                <td class="py-3 px-4 font-semibold text-[#800000]">{{ queue.queue_number }}</td>
+                                <td class="py-3 px-4">{{ queue.service_category?.name || 'N/A' }}</td>
+                                <td class="py-3 px-4">
+                                    <button
+                                        @click="reinstate(queue)"
+                                        :disabled="processing || queue.skip_count >= 2 || queue.is_reinstated"
+                                        class="border-2 border-[#FFC107] hover:bg-[#FFC107] text-[#800000] px-4 py-2 rounded-lg font-semibold transition disabled:opacity-50"
+                                    >
+                                        Reinstate
+                                    </button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
 

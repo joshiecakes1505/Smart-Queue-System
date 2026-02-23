@@ -11,6 +11,7 @@ class ServiceCategory extends Model
 
     protected $fillable = [
         'name',
+        'prefix',
         'description',
         'max_queues_per_day',
         'avg_service_seconds',

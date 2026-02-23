@@ -9,7 +9,8 @@ class StoreQueueRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return Auth::check() && Auth::user()?->role?->name === 'frontdesk';
+        return Auth::guard('frontdesk')->check()
+            && Auth::guard('frontdesk')->user()?->role?->name === 'frontdesk';
     }
 
     public function rules(): array
@@ -17,7 +18,7 @@ class StoreQueueRequest extends FormRequest
         return [
             'service_category_id' => ['required', 'integer', 'exists:service_categories,id'],
             'client_name' => ['nullable', 'string', 'max:191'],
-            'client_type' => ['required', 'string', 'in:student,parent,visitor'],
+            'client_type' => ['required', 'string', 'in:student,parent,visitor,senior_citizen,high_priority'],
             'phone' => ['nullable', 'string', 'max:50'],
             'note' => ['nullable', 'string', 'max:1000'],
         ];

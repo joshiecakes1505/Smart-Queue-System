@@ -26,7 +26,7 @@ return new class extends Migration
         });
 
         Schema::table('queues', function (Blueprint $table) {
-            $table->enum('client_type', ['student', 'parent', 'visitor'])->after('client_name')->default('student');
+            $table->enum('client_type', ['student', 'parent', 'visitor', 'senior_citizen', 'high_priority'])->after('client_name')->default('student');
         });
     }
 

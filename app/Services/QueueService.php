@@ -12,10 +12,12 @@ use Carbon\Carbon;
 class QueueService
 {
     protected ?QueueRepository $repo = null;
+    protected QueueSchedulingService $scheduler;
 
-    public function __construct(?QueueRepository $repo = null)
+    public function __construct(?QueueRepository $repo = null, ?QueueSchedulingService $scheduler = null)
     {
         $this->repo = $repo ?? new QueueRepository();
+        $this->scheduler = $scheduler ?? new QueueSchedulingService();
     }
 
     /**
@@ -31,7 +33,7 @@ class QueueService
             $serviceCategory = \App\Models\ServiceCategory::find($serviceCategoryId);
             $prefix = $serviceCategory?->prefix ?? 'Q';
 
-            $counterQuery = QueueCounter::where('date', $date)
+            $counterQuery = QueueCounter::whereDate('date', $date)
                 ->where('service_category_id', $serviceCategoryId);
 
             $counter = $counterQuery->lockForUpdate()->first();
@@ -50,6 +52,10 @@ class QueueService
             $number = str_pad($counter->last_number, 3, '0', STR_PAD_LEFT);
             $queueNumber = sprintf('%s-%s', $prefix, $number);
 
+            $assignedWindowId = $serviceCategoryId
+                ? $this->scheduler->assignWindowForIncomingQueue((int) $serviceCategoryId, $counter)
+                : null;
+
             $queue = $this->repo->create([
                 'queue_number' => $queueNumber,
                 'service_category_id' => $serviceCategoryId,
@@ -58,6 +64,7 @@ class QueueService
                 'client_type' => $data['client_type'] ?? 'student',
                 'phone' => $data['phone'] ?? null,
                 'note' => $data['note'] ?? null,
+                'cashier_window_id' => $assignedWindowId,
             ]);
 
             // initial creation log is optional; queue_logs enum currently contains called/skipped/recalled/completed
@@ -71,7 +78,18 @@ class QueueService
     public function callNext(int $windowId, ?int $serviceCategoryId = null, ?int $performedBy = null): ?Queue
     {
         return DB::transaction(function () use ($windowId, $serviceCategoryId, $performedBy) {
-            $next = $this->repo->findNextWaiting($serviceCategoryId);
+            $activeQueue = Queue::where('cashier_window_id', $windowId)
+                ->where('status', Queue::STATUS_CALLED)
+                ->orderBy('start_time', 'desc')
+                ->first();
+
+            if ($activeQueue) {
+                return $activeQueue;
+            }
+
+            $counter = $this->resolveSchedulingCounter($serviceCategoryId);
+
+            $next = $this->scheduler->selectNextQueueForWindow($windowId, $serviceCategoryId, $counter);
             if (!$next) {
                 return null;
             }
@@ -97,7 +115,14 @@ class QueueService
         $queue = $this->repo->getById($queueId);
         if (!$queue) return null;
 
+        if ($queue->status !== Queue::STATUS_CALLED) {
+            return null;
+        }
+
+        $queue->skip_count = (int) $queue->skip_count + 1;
         $queue->status = Queue::STATUS_SKIPPED;
+        $queue->cashier_window_id = null;
+        $queue->end_time = Carbon::now();
         $queue->save();
 
         QueueLog::create([
@@ -114,9 +139,7 @@ class QueueService
         $queue = $this->repo->getById($queueId);
         if (!$queue) return null;
 
-        $queue->status = Queue::STATUS_WAITING;
-        $queue->cashier_window_id = null;
-        $queue->save();
+        $queue->touch();
 
         QueueLog::create([
             'queue_id' => $queue->id,
@@ -131,6 +154,10 @@ class QueueService
     {
         $queue = $this->repo->getById($queueId);
         if (!$queue) return null;
+
+        if ($queue->status !== Queue::STATUS_CALLED) {
+            return null;
+        }
 
         $queue->status = Queue::STATUS_COMPLETED;
         if (!$queue->start_time) {
@@ -149,5 +176,65 @@ class QueueService
         ]);
 
         return $queue;
+    }
+
+    public function reinstate(int $queueId, ?int $performedBy = null): ?Queue
+    {
+        $queue = $this->repo->getById($queueId);
+        if (!$queue) return null;
+
+        if (
+            $queue->status !== Queue::STATUS_SKIPPED ||
+            (int) $queue->skip_count !== 1 ||
+            (bool) $queue->is_reinstated
+        ) {
+            return null;
+        }
+
+        $queue->status = Queue::STATUS_WAITING;
+        $queue->is_reinstated = true;
+        $queue->cashier_window_id = null;
+        $queue->start_time = null;
+        $queue->end_time = null;
+        $queue->save();
+
+        QueueLog::create([
+            'queue_id' => $queue->id,
+            'action' => 'reinstated',
+            'performed_by' => $performedBy,
+        ]);
+
+        return $queue;
+    }
+
+    public function estimateWaitMinutes(Queue $queue): ?int
+    {
+        return $this->scheduler->estimateWaitMinutes($queue);
+    }
+
+    private function resolveSchedulingCounter(?int $serviceCategoryId): QueueCounter
+    {
+        $date = now()->toDateString();
+
+        $counterQuery = QueueCounter::whereDate('date', $date);
+
+        if ($serviceCategoryId) {
+            $counterQuery->where('service_category_id', $serviceCategoryId);
+        } else {
+            $counterQuery->whereNull('service_category_id');
+        }
+
+        $counter = $counterQuery->lockForUpdate()->first();
+
+        if (!$counter) {
+            $counter = QueueCounter::create([
+                'date' => $date,
+                'service_category_id' => $serviceCategoryId,
+                'last_number' => 0,
+                'regular_served_in_cycle' => 0,
+            ]);
+        }
+
+        return $counter;
     }
 }

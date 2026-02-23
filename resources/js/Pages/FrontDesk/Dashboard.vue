@@ -1,7 +1,8 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { useForm, usePage } from '@inertiajs/vue3';
+import { useForm, usePage, router } from '@inertiajs/vue3';
 import { computed } from 'vue';
+import { usePolling } from '@/Composables/usePolling';
 
 const props = defineProps({
     serviceCategories: {
@@ -46,6 +47,14 @@ const formatTime = (datetime) => {
         minute: '2-digit',
     });
 };
+
+usePolling(() => {
+    return router.reload({
+        only: ['waitingQueues', 'totalWaiting', 'totalServedToday'],
+        preserveState: true,
+        preserveScroll: true,
+    });
+}, 2500);
 </script>
 
 <template>
@@ -139,6 +148,24 @@ const formatTime = (datetime) => {
                                     class="w-4 h-4 text-[#800000] border-gray-300 focus:ring-[#800000]"
                                 />
                                 <span class="ml-2 text-gray-700">Visitor</span>
+                            </label>
+                            <label class="flex items-center cursor-pointer">
+                                <input
+                                    v-model="form.client_type"
+                                    type="radio"
+                                    value="senior_citizen"
+                                    class="w-4 h-4 text-[#800000] border-gray-300 focus:ring-[#800000]"
+                                />
+                                <span class="ml-2 text-gray-700">Senior Citizen (Priority)</span>
+                            </label>
+                            <label class="flex items-center cursor-pointer">
+                                <input
+                                    v-model="form.client_type"
+                                    type="radio"
+                                    value="high_priority"
+                                    class="w-4 h-4 text-[#800000] border-gray-300 focus:ring-[#800000]"
+                                />
+                                <span class="ml-2 text-gray-700">High Priority</span>
                             </label>
                         </div>
                         <div v-if="form.errors.client_type" class="text-red-500 text-sm mt-1">

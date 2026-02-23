@@ -4,6 +4,7 @@ namespace App\Http\Controllers\FrontDesk;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreQueueRequest;
+use App\Models\Queue;
 use App\Models\ServiceCategory;
 use App\Services\QueueService;
 use Inertia\Inertia;
@@ -14,7 +15,7 @@ class QueueController extends Controller
 
     public function __construct(QueueService $queueService)
     {
-        $this->middleware('auth');
+        $this->middleware('auth:frontdesk');
         $this->middleware('role:frontdesk');
         $this->queueService = $queueService;
     }
@@ -22,14 +23,22 @@ class QueueController extends Controller
     public function index()
     {
         $categories = ServiceCategory::orderBy('name')->get();
-        $waitingQueues = \App\Models\Queue::with('serviceCategory')
-            ->where('status', \App\Models\Queue::STATUS_WAITING)
-            ->orderBy('created_at', 'desc')
-            ->get();
+        $waitingQueues = Queue::with('serviceCategory')
+            ->where('status', Queue::STATUS_WAITING)
+            ->orderByRaw("CASE WHEN client_type IN ('senior_citizen', 'high_priority') THEN 0 ELSE 1 END")
+            ->orderBy('created_at', 'asc')
+            ->get()
+            ->map(function (Queue $queue) {
+                return [
+                    ...$queue->toArray(),
+                    'is_priority' => $queue->isPriorityClientType(),
+                    'estimated_wait_minutes' => $this->queueService->estimateWaitMinutes($queue),
+                ];
+            });
         
-        $totalWaiting = \App\Models\Queue::where('status', \App\Models\Queue::STATUS_WAITING)->count();
-        $totalServedToday = \App\Models\Queue::whereDate('created_at', today())
-            ->where('status', \App\Models\Queue::STATUS_COMPLETED)
+        $totalWaiting = Queue::where('status', Queue::STATUS_WAITING)->count();
+        $totalServedToday = Queue::whereDate('created_at', today())
+            ->where('status', Queue::STATUS_COMPLETED)
             ->count();
         
         return Inertia::render('FrontDesk/Dashboard', [

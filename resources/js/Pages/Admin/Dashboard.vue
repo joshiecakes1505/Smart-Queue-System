@@ -1,6 +1,8 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Link } from '@inertiajs/vue3';
+import { router } from '@inertiajs/vue3';
+import { usePolling } from '@/Composables/usePolling';
 
 defineProps({
   totalQueuestoday: Number,
@@ -11,6 +13,22 @@ defineProps({
   busiestHour: Number,
   busiestHourCount: Number,
 })
+
+usePolling(() => {
+  return router.reload({
+    only: [
+      'totalQueuestoday',
+      'totalCompletedToday',
+      'totalWaitingNow',
+      'totalUsers',
+      'avgServiceMinutes',
+      'busiestHour',
+      'busiestHourCount',
+    ],
+    preserveState: true,
+    preserveScroll: true,
+  });
+}, 3000)
 </script>
 
 <template>

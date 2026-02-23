@@ -94,7 +94,22 @@ usePolling(async () => {
       <div v-else class="bg-white rounded-2xl shadow-2xl p-8">
         <div class="text-center mb-6">
           <p class="text-gray-600 text-sm uppercase tracking-wide">Your Queue Number</p>
-          <h1 class="text-6xl font-bold text-blue-600 mt-2">{{ queue_number }}</h1>
+          <h1 class="text-6xl font-bold text-blue-600 mt-2">{{ queueData?.queue_number || queue_number }}</h1>
+        </div>
+
+        <div v-if="queueData" class="grid grid-cols-1 gap-3 mb-6 border border-gray-100 rounded-lg p-4 bg-gray-50">
+          <div class="flex items-center justify-between">
+            <span class="text-gray-600">Client Name</span>
+            <span class="font-semibold text-gray-900">{{ queueData.client_name || 'Walk-in Client' }}</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-gray-600">Client Number</span>
+            <span class="font-semibold text-gray-900">{{ queueData.client_number || 'Not provided' }}</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="text-gray-600">Queue</span>
+            <span class="font-semibold text-gray-900">{{ queueData.service_category || 'General' }}</span>
+          </div>
         </div>
 
         <!-- QR Code -->

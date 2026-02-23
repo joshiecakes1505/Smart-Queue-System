@@ -18,9 +18,14 @@ class AuthenticatedSessionController extends Controller
      */
     public function create(): Response
     {
-        return Inertia::render('Auth/Login', [
+        return Inertia::render('Welcome', [
             'canResetPassword' => Route::has('password.request'),
             'status' => session('status'),
+            'roles' => [
+                ['value' => 'admin', 'label' => 'Admin'],
+                ['value' => 'frontdesk', 'label' => 'Front Desk'],
+                ['value' => 'cashier', 'label' => 'Cashier'],
+            ],
         ]);
     }
 
@@ -31,17 +36,20 @@ class AuthenticatedSessionController extends Controller
     {
         $request->authenticate();
 
+        $guard = $request->authenticatedGuard();
+        Auth::shouldUse($guard);
+
         $request->session()->regenerate();
 
         // Redirect based on user role
-        $user = Auth::user();
+        $user = Auth::guard($guard)->user();
         $roleName = $user->role?->name;
 
         return match ($roleName) {
-            'admin' => redirect()->intended(route('admin.dashboard', absolute: false)),
-            'frontdesk' => redirect()->intended(route('frontdesk.queues.index', absolute: false)),
-            'cashier' => redirect()->intended(route('cashier.index', absolute: false)),
-            default => redirect()->intended(route('admin.dashboard', absolute: false)),
+            'admin' => redirect()->route('admin.dashboard'),
+            'frontdesk' => redirect()->route('frontdesk.queues.index'),
+            'cashier' => redirect()->route('cashier.index'),
+            default => redirect()->route('admin.dashboard'),
         };
     }
 
@@ -50,9 +58,18 @@ class AuthenticatedSessionController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
-        Auth::guard('web')->logout();
+        $role = $request->input('role');
 
-        $request->session()->invalidate();
+        if (in_array($role, ['admin', 'frontdesk', 'cashier', 'web'], true)) {
+            Auth::guard($role)->logout();
+        } else {
+            foreach (['admin', 'frontdesk', 'cashier', 'web'] as $guard) {
+                if (Auth::guard($guard)->check()) {
+                    Auth::guard($guard)->logout();
+                    break;
+                }
+            }
+        }
 
         $request->session()->regenerateToken();
 

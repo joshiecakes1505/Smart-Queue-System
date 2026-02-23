@@ -1,6 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { computed } from 'vue';
+import { onMounted } from 'vue';
 
 const props = defineProps({
     queue: {
@@ -14,6 +15,12 @@ const qrCodeUrl = computed(() => route('qr.generate', props.queue.queue_number))
 const printTicket = () => {
     window.print();
 };
+
+onMounted(() => {
+    setTimeout(() => {
+        printTicket();
+    }, 250);
+});
 
 const formatDate = (datetime) => {
     return new Date(datetime).toLocaleString('en-US', {
@@ -29,7 +36,9 @@ const clientTypeLabel = (type) => {
     const labels = {
         student: 'Student',
         parent: 'Parent',
-        visitor: 'Visitor'
+        visitor: 'Visitor',
+        senior_citizen: 'Senior Citizen (Priority)',
+        high_priority: 'High Priority',
     };
     return labels[type] || type;
 };

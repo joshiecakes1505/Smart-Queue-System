@@ -16,7 +16,7 @@ class CashierController extends Controller
 
     public function __construct(QueueService $queueService)
     {
-        $this->middleware('auth');
+        $this->middleware('auth:cashier');
         $this->middleware('role:cashier');
         $this->queueService = $queueService;
     }
@@ -29,6 +29,7 @@ class CashierController extends Controller
         $current = null;
         $next = collect();
         $recentLogs = collect();
+        $skippedEligible = collect();
 
         if ($window) {
             $current = QueueModel::with('serviceCategory')
@@ -51,11 +52,20 @@ class CashierController extends Controller
             ->limit(5)
             ->get();
 
+        $skippedEligible = QueueModel::with('serviceCategory')
+            ->where('status', QueueModel::STATUS_SKIPPED)
+            ->where('skip_count', 1)
+            ->where('is_reinstated', false)
+            ->orderBy('updated_at', 'desc')
+            ->limit(10)
+            ->get();
+
         return Inertia::render('Cashier/Dashboard', [
             'window' => $window,
             'current' => $current,
             'next' => $next,
             'recentLogs' => $recentLogs,
+            'skippedEligible' => $skippedEligible,
         ]);
     }
 
@@ -83,7 +93,15 @@ class CashierController extends Controller
     {
         $performedBy = $request->user()?->id;
         $res = $this->queueService->skip((int)$queue, $performedBy);
-        return response()->json(['status' => $res ? 'ok' : 'not_found', 'queue' => $res]);
+
+        if (!$res) {
+            return response()->json([
+                'status' => 'invalid_transition',
+                'message' => 'Queue not found or cannot be skipped from its current status.',
+            ], 422);
+        }
+
+        return response()->json(['status' => 'ok', 'queue' => $res]);
     }
 
     public function recall(Request $request, $queue)
@@ -97,6 +115,29 @@ class CashierController extends Controller
     {
         $performedBy = $request->user()?->id;
         $res = $this->queueService->complete((int)$queue, $performedBy);
-        return response()->json(['status' => $res ? 'ok' : 'not_found', 'queue' => $res]);
+
+        if (!$res) {
+            return response()->json([
+                'status' => 'invalid_transition',
+                'message' => 'Queue not found or cannot be completed from its current status.',
+            ], 422);
+        }
+
+        return response()->json(['status' => 'ok', 'queue' => $res]);
+    }
+
+    public function reinstate(Request $request, $queue)
+    {
+        $performedBy = $request->user()?->id;
+        $res = $this->queueService->reinstate((int)$queue, $performedBy);
+
+        if (!$res) {
+            return response()->json([
+                'status' => 'invalid_transition',
+                'message' => 'Queue is not eligible for reinstatement.',
+            ], 422);
+        }
+
+        return response()->json(['status' => 'ok', 'queue' => $res]);
     }
 }

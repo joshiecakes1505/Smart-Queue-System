@@ -9,7 +9,13 @@ class QueueCounter extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['date', 'last_number', 'service_category_id'];
+    protected $fillable = [
+        'date',
+        'last_number',
+        'service_category_id',
+        'last_assigned_window_id',
+        'regular_served_in_cycle',
+    ];
 
     protected $casts = [
         'date' => 'date',

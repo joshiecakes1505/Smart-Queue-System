@@ -5,11 +5,16 @@ namespace App\Http\Controllers\Public;
 use App\Http\Controllers\Controller;
 use App\Models\CashierWindow;
 use App\Models\Queue;
+use App\Services\QueueService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class PublicQueueController extends Controller
 {
+    public function __construct(private readonly QueueService $queueService)
+    {
+    }
+
     /**
      * Live view of all windows and waiting queues (for public display)
      */
@@ -38,6 +43,7 @@ class PublicQueueController extends Controller
 
         $next = Queue::where('status', Queue::STATUS_WAITING)
             ->with(['serviceCategory'])
+            ->orderByRaw("CASE WHEN client_type IN ('senior_citizen', 'high_priority') THEN 0 ELSE 1 END")
             ->orderBy('created_at', 'asc')
             ->limit(10)
             ->get()
@@ -45,6 +51,7 @@ class PublicQueueController extends Controller
                 return [
                     'queue_number' => $q->queue_number,
                     'client_name' => $q->client_name,
+                    'client_type' => $q->client_type,
                     'service_category' => $q->serviceCategory->name ?? null,
                 ];
             });
@@ -79,22 +86,20 @@ class PublicQueueController extends Controller
         $position = null;
         if ($queue->status === Queue::STATUS_WAITING) {
             $position = Queue::where('status', Queue::STATUS_WAITING)
+                ->where('service_category_id', $queue->service_category_id)
                 ->where('created_at', '<', $queue->created_at)
                 ->count() + 1;
         }
 
-        // Calculate ETA based on queue ahead and average service time
-        $eta = null;
-        if ($position && $queue->serviceCategory) {
-            $avgSeconds = $queue->serviceCategory->avg_service_seconds ?? 300; // 5 min default
-            $estimatedSeconds = ($position - 1) * $avgSeconds;
-            $eta = round($estimatedSeconds / 60); // Convert to minutes
-        }
+        $eta = $this->queueService->estimateWaitMinutes($queue);
 
         return response()->json([
             'queue_number' => $queue->queue_number,
             'status' => $queue->status,
             'client_name' => $queue->client_name,
+            'client_number' => $queue->phone,
+            'client_type' => $queue->client_type,
+            'is_priority' => $queue->isPriorityClientType(),
             'service_category' => $queue->serviceCategory->name ?? null,
             'position' => $position,
             'eta_minutes' => $eta,

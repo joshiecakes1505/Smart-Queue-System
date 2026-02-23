@@ -40,6 +40,7 @@ class DisplayController extends Controller
 
         $nextQueues = Queue::where('status', Queue::STATUS_WAITING)
             ->with(['serviceCategory'])
+            ->orderByRaw("CASE WHEN client_type IN ('senior_citizen', 'high_priority') THEN 0 ELSE 1 END")
             ->orderBy('created_at', 'asc')
             ->limit(5)
             ->get()
@@ -47,6 +48,7 @@ class DisplayController extends Controller
                 return [
                     'queue_number' => $q->queue_number,
                     'client_name' => $q->client_name,
+                    'client_type' => $q->client_type,
                     'service_category' => $q->serviceCategory->name ?? null,
                 ];
             });

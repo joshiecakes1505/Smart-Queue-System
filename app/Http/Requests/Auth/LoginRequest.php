@@ -11,6 +11,8 @@ use Illuminate\Validation\ValidationException;
 
 class LoginRequest extends FormRequest
 {
+    private string $authenticatedGuard = 'web';
+
     /**
      * Determine if the user is authorized to make this request.
      */
@@ -27,6 +29,7 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'role' => ['required', 'string', 'in:admin,frontdesk,cashier'],
             'email' => ['required', 'string', 'email'],
             'password' => ['required', 'string'],
         ];
@@ -41,13 +44,29 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        $guard = $this->guardFromRole();
+        $credentials = $this->only('email', 'password');
+
+        if (! Auth::guard($guard)->attempt($credentials, $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
                 'email' => trans('auth.failed'),
             ]);
         }
+
+        $user = Auth::guard($guard)->user()?->loadMissing('role');
+
+        if (! $user || $user->role?->name !== $this->string('role')->toString()) {
+            Auth::guard($guard)->logout();
+            RateLimiter::hit($this->throttleKey());
+
+            throw ValidationException::withMessages([
+                'role' => 'Selected role does not match this account.',
+            ]);
+        }
+
+        $this->authenticatedGuard = $guard;
 
         RateLimiter::clear($this->throttleKey());
     }
@@ -80,6 +99,23 @@ class LoginRequest extends FormRequest
      */
     public function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->string('email')).'|'.$this->ip());
+        return Str::transliterate(Str::lower($this->string('email')).'|'.$this->string('role').'|'.$this->ip());
+    }
+
+    public function authenticatedGuard(): string
+    {
+        return $this->authenticatedGuard;
+    }
+
+    private function guardFromRole(): string
+    {
+        $role = $this->string('role')->toString();
+
+        return match ($role) {
+            'admin' => 'admin',
+            'frontdesk' => 'frontdesk',
+            'cashier' => 'cashier',
+            default => 'web',
+        };
     }
 }
