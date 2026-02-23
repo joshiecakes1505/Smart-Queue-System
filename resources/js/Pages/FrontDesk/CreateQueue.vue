@@ -1,4 +1,5 @@
 <script setup>
+import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
 import { computed } from 'vue'
 import { useForm } from '@inertiajs/vue3'
 
@@ -8,6 +9,8 @@ const props = defineProps({
     type: String,
     default: null,
   },
+  todayTotal: Number,
+  waitingCount: Number,
 })
 
 const form = useForm({
@@ -31,6 +34,24 @@ function reset() {
 </script>
 
 <template>
+   <div class="p-4">
+    <h1 class="text-2xl font-bold">Front Desk — Dashboard</h1>
+    <div class="mt-4">
+      <p>Today total: {{ todayTotal ?? 0 }}</p>
+      <p>Waiting: {{ waitingCount ?? 0 }}</p>
+    </div>
+  </div>
+
+  <div class="mt-3 space-y-1">
+            <ResponsiveNavLink
+                :href="route('logout')"
+                method="post"
+                as="button"
+            >
+                Log Out
+            </ResponsiveNavLink>
+  </div>
+
   <div class="min-h-screen bg-gradient-to-br from-green-50 to-blue-50">
     <!-- Form Section -->
     <div v-if="!showQR" class="container mx-auto p-8">
@@ -152,6 +173,7 @@ function reset() {
             Create Another Queue
           </button>
         </div>
+
       </div>
     </div>
   </div>

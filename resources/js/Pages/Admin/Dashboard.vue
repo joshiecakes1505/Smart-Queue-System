@@ -1,5 +1,6 @@
 <script setup>
-import { Link } from '@inertiajs/vue3'
+import { Link } from '@inertiajs/vue3';
+import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
 
 defineProps({
   totalQueuestoday: Number,
@@ -121,6 +122,16 @@ defineProps({
               <p class="text-sm text-purple-600">TV/monitor display</p>
             </Link>
           </div>
+        </div>
+
+        <div class="mt-3 space-y-1">
+            <ResponsiveNavLink
+                :href="route('logout')"
+                method="post"
+                as="button"
+            >
+                Log Out
+            </ResponsiveNavLink>
         </div>
       </div>
     </div>

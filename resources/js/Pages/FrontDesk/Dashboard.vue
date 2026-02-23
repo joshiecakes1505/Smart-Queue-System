@@ -1,4 +1,7 @@
 <script setup>
+import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
+
+
 defineProps({
   todayTotal: Number,
   waitingCount: Number,
@@ -14,4 +17,14 @@ defineProps({
       <p>Waiting: {{ waitingCount ?? 0 }}</p>
     </div>
   </div>
+
+  <div class="mt-3 space-y-1">
+            <ResponsiveNavLink
+                :href="route('logout')"
+                method="post"
+                as="button"
+            >
+                Log Out
+            </ResponsiveNavLink>
+        </div>
 </template>
