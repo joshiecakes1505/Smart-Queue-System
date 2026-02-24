@@ -1,7 +1,10 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Link, router } from '@inertiajs/vue3';
+import { inject } from 'vue';
 import { usePolling } from '@/Composables/usePolling';
+
+const swal = inject('$swal');
 
 const props = defineProps({
   categories: {
@@ -10,11 +13,33 @@ const props = defineProps({
   },
 });
 
-const destroyCategory = (id) => {
-  if (!confirm('Delete this service category?')) return;
+const destroyCategory = async (id) => {
+  const decision = await swal?.fire({
+    icon: 'warning',
+    title: 'Delete category?',
+    text: 'This action cannot be undone.',
+    showCancelButton: true,
+    confirmButtonText: 'Yes, delete',
+  });
+
+  if (swal && !decision?.isConfirmed) return;
 
   router.delete(route('admin.service-categories.destroy', id), {
     preserveScroll: true,
+    onSuccess: () => {
+      swal?.fire({
+        icon: 'success',
+        title: 'Deleted',
+        text: 'Service category deleted successfully.',
+      });
+    },
+    onError: () => {
+      swal?.fire({
+        icon: 'error',
+        title: 'Delete failed',
+        text: 'Unable to delete service category.',
+      });
+    },
   });
 };
 

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Public;
 use App\Http\Controllers\Controller;
 use App\Models\CashierWindow;
 use App\Models\Queue;
+use App\Models\QueueCounter;
 use App\Services\QueueService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -76,22 +77,36 @@ class PublicQueueController extends Controller
      */
     public function getQueueData($queue_number)
     {
-        $queue = Queue::where('queue_number', $queue_number)->first();
+        $queue = Queue::with(['serviceCategory', 'cashierWindow'])->where('queue_number', $queue_number)->first();
 
         if (!$queue) {
             return response()->json(['error' => 'Queue not found'], 404);
         }
 
-        // Find position in waiting queue if status is waiting
         $position = null;
-        if ($queue->status === Queue::STATUS_WAITING) {
-            $position = Queue::where('status', Queue::STATUS_WAITING)
-                ->where('service_category_id', $queue->service_category_id)
-                ->where('created_at', '<', $queue->created_at)
-                ->count() + 1;
-        }
+        $eta = null;
+        $estimatedServedAt = null;
+        $waitingAhead = null;
+        $activeCalledAhead = null;
+        $queuesAhead = null;
 
-        $eta = $this->queueService->estimateWaitMinutes($queue);
+        if ($queue->status === Queue::STATUS_WAITING) {
+            $position = $this->resolveWeightedPosition($queue);
+
+            if ($position) {
+                $waitingAhead = max(0, $position - 1);
+                $activeCalledAhead = Queue::query()
+                    ->where('status', Queue::STATUS_CALLED)
+                    ->count();
+                $queuesAhead = $waitingAhead + $activeCalledAhead;
+
+                $eta = $this->resolveEstimatedWaitMinutes($queue, $position);
+
+                if ($eta !== null) {
+                    $estimatedServedAt = now()->addMinutes($eta)->toIso8601String();
+                }
+            }
+        }
 
         return response()->json([
             'queue_number' => $queue->queue_number,
@@ -102,11 +117,97 @@ class PublicQueueController extends Controller
             'is_priority' => $queue->isPriorityClientType(),
             'service_category' => $queue->serviceCategory->name ?? null,
             'position' => $position,
+            'waiting_ahead' => $waitingAhead,
+            'active_called_ahead' => $activeCalledAhead,
+            'queues_ahead' => $queuesAhead,
             'eta_minutes' => $eta,
+            'estimated_served_at' => $estimatedServedAt,
             'created_at' => $queue->created_at?->toIso8601String(),
             'start_time' => $queue->start_time?->toIso8601String(),
             'cashier_window' => $queue->cashierWindow?->name,
         ]);
+    }
+
+    private function resolveWeightedPosition(Queue $targetQueue): ?int
+    {
+        $waitingQueues = Queue::query()
+            ->where('status', Queue::STATUS_WAITING)
+            ->orderBy('created_at', 'asc')
+            ->orderBy('id', 'asc')
+            ->get(['id', 'client_type']);
+
+        if ($waitingQueues->isEmpty()) {
+            return null;
+        }
+
+        $priorityQueueIds = $waitingQueues
+            ->filter(fn (Queue $queue) => in_array($queue->client_type, Queue::PRIORITY_CLIENT_TYPES, true))
+            ->pluck('id')
+            ->values()
+            ->all();
+
+        $regularQueueIds = $waitingQueues
+            ->filter(fn (Queue $queue) => !in_array($queue->client_type, Queue::PRIORITY_CLIENT_TYPES, true))
+            ->pluck('id')
+            ->values()
+            ->all();
+
+        $counter = QueueCounter::query()
+            ->whereDate('date', now()->toDateString())
+            ->whereNull('service_category_id')
+            ->first();
+
+        $regularServedInCycle = (int) ($counter?->regular_served_in_cycle ?? 0);
+
+        $scheduledOrder = [];
+
+        while (!empty($priorityQueueIds) || !empty($regularQueueIds)) {
+            if (!empty($priorityQueueIds) && $regularServedInCycle >= 2) {
+                $scheduledOrder[] = array_shift($priorityQueueIds);
+                $regularServedInCycle = 0;
+                continue;
+            }
+
+            if (!empty($regularQueueIds)) {
+                $scheduledOrder[] = array_shift($regularQueueIds);
+                $regularServedInCycle = min(2, $regularServedInCycle + 1);
+                continue;
+            }
+
+            $scheduledOrder[] = array_shift($priorityQueueIds);
+            $regularServedInCycle = 0;
+        }
+
+        $index = array_search($targetQueue->id, $scheduledOrder, true);
+
+        if ($index === false) {
+            return null;
+        }
+
+        return $index + 1;
+    }
+
+    private function resolveEstimatedWaitMinutes(Queue $queue, int $position): int
+    {
+        $avgServiceSeconds = (int) ($queue->serviceCategory?->avg_service_seconds ?? 300);
+
+        $activeCalledCount = Queue::query()
+            ->where('status', Queue::STATUS_CALLED)
+            ->count();
+
+        $activeWindows = CashierWindow::query()
+            ->where('active', true)
+            ->whereNotNull('assigned_user_id')
+            ->count();
+
+        if ($activeWindows < 1) {
+            $activeWindows = max(1, CashierWindow::query()->where('active', true)->count());
+        }
+
+        $queuesAhead = max(0, ($position - 1) + $activeCalledCount);
+        $estimatedSeconds = ($queuesAhead * $avgServiceSeconds) / max(1, $activeWindows);
+
+        return (int) ceil($estimatedSeconds / 60);
     }
 }
 

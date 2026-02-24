@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Link, router } from '@inertiajs/vue3';
-import { reactive, ref } from 'vue';
+import { inject, reactive, ref } from 'vue';
 import { usePolling } from '@/Composables/usePolling';
 
 const props = defineProps({
@@ -28,6 +28,7 @@ const selectedCashierByWindow = reactive(
 
 const processingWindowId = ref(null);
 const message = ref('');
+const swal = inject('$swal');
 
 const assignCashier = (windowId) => {
   processingWindowId.value = windowId;
@@ -41,7 +42,19 @@ const assignCashier = (windowId) => {
     preserveScroll: true,
     onSuccess: () => {
       message.value = 'Cashier assignment updated.';
+      swal?.fire({
+        icon: 'success',
+        title: 'Saved',
+        text: 'Cashier assignment updated.',
+      });
       router.reload({ only: ['cashierWindows'] });
+    },
+    onError: () => {
+      swal?.fire({
+        icon: 'error',
+        title: 'Update failed',
+        text: 'Unable to update cashier assignment. Please try again.',
+      });
     },
     onFinish: () => {
       processingWindowId.value = null;

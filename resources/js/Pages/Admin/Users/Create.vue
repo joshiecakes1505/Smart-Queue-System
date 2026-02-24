@@ -1,10 +1,21 @@
 <script setup>
 import { useForm } from '@inertiajs/vue3'
+import { inject } from 'vue'
+
+const swal = inject('$swal')
 
 const form = useForm({ name: '', email: '', password: '', role_id: '' })
 
 function submit() {
-  form.post(route('admin.users.store'))
+  form.post(route('admin.users.store'), {
+    onError: () => {
+      swal?.fire({
+        icon: 'error',
+        title: 'Validation error',
+        text: 'Please check the form fields and try again.',
+      })
+    },
+  })
 }
 </script>
 

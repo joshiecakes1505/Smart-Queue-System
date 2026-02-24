@@ -46,11 +46,7 @@ class QueueService
                 ]);
             }
 
-            $counter->last_number = $counter->last_number + 1;
-            $counter->save();
-
-            $number = str_pad($counter->last_number, 3, '0', STR_PAD_LEFT);
-            $queueNumber = sprintf('%s-%s', $prefix, $number);
+            $queueNumber = $this->nextAvailableQueueNumber($counter, $prefix);
 
             $assignedWindowId = $serviceCategoryId
                 ? $this->scheduler->assignWindowForIncomingQueue((int) $serviceCategoryId, $counter)
@@ -70,6 +66,19 @@ class QueueService
             // initial creation log is optional; queue_logs enum currently contains called/skipped/recalled/completed
             return $queue;
         });
+    }
+
+    private function nextAvailableQueueNumber(QueueCounter $counter, string $prefix): string
+    {
+        do {
+            $counter->last_number = $counter->last_number + 1;
+            $counter->save();
+
+            $number = str_pad($counter->last_number, 3, '0', STR_PAD_LEFT);
+            $queueNumber = sprintf('%s-%s', $prefix, $number);
+        } while (Queue::where('queue_number', $queueNumber)->exists());
+
+        return $queueNumber;
     }
 
     /**

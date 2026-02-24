@@ -1,6 +1,9 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Link, useForm } from '@inertiajs/vue3';
+import { inject } from 'vue';
+
+const swal = inject('$swal');
 
 const form = useForm({
   name: '',
@@ -11,7 +14,22 @@ const form = useForm({
 });
 
 function submit() {
-  form.post(route('admin.service-categories.store'));
+  form.post(route('admin.service-categories.store'), {
+    onSuccess: () => {
+      swal?.fire({
+        icon: 'success',
+        title: 'Created',
+        text: 'Service category created successfully.',
+      });
+    },
+    onError: () => {
+      swal?.fire({
+        icon: 'error',
+        title: 'Validation error',
+        text: 'Please check the form fields and try again.',
+      });
+    },
+  });
 }
 </script>
 

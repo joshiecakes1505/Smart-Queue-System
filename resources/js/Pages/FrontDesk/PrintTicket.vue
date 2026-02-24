@@ -16,6 +16,7 @@ const printTicket = () => {
     window.print();
 };
 
+
 onMounted(() => {
     setTimeout(() => {
         printTicket();

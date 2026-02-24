@@ -116,4 +116,32 @@ class QueueSchedulingTest extends TestCase
         $this->assertGreaterThanOrEqual(0, $eta);
         $this->assertSame(Queue::STATUS_WAITING, $target->status);
     }
+
+    public function test_create_queue_skips_existing_queue_number_and_generates_next_available(): void
+    {
+        $category = ServiceCategory::create([
+            'name' => 'Transactions',
+            'prefix' => 'T',
+            'description' => 'Transaction services',
+            'avg_service_seconds' => 300,
+        ]);
+
+        Queue::create([
+            'queue_number' => 'T-001',
+            'service_category_id' => $category->id,
+            'status' => Queue::STATUS_COMPLETED,
+            'client_name' => 'Existing',
+            'client_type' => Queue::CLIENT_TYPE_STUDENT,
+        ]);
+
+        $service = app(QueueService::class);
+
+        $newQueue = $service->createQueue([
+            'service_category_id' => $category->id,
+            'client_name' => 'New Client',
+            'client_type' => Queue::CLIENT_TYPE_STUDENT,
+        ]);
+
+        $this->assertSame('T-002', $newQueue->queue_number);
+    }
 }

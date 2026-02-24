@@ -1,8 +1,19 @@
 <script setup>
+import { router } from '@inertiajs/vue3'
+import { usePolling } from '@/Composables/usePolling'
+
 defineProps({
   window: Object,
   queue: Object,
 })
+
+usePolling(() => {
+  return router.reload({
+    only: ['window', 'queue'],
+    preserveState: true,
+    preserveScroll: true,
+  })
+}, 2500)
 </script>
 
 <template>

@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { router } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { inject, ref } from 'vue';
 import { usePolling } from '@/Composables/usePolling';
 
 const props = defineProps({
@@ -17,6 +17,7 @@ const props = defineProps({
 
 const processing = ref(false);
 const feedback = ref({ type: '', message: '' });
+const swal = inject('$swal');
 
 const setFeedback = (type, message) => {
     feedback.value = { type, message };
@@ -36,11 +37,13 @@ const refreshData = () => {
 const callNext = () => {
     if (!props.window) {
         setFeedback('error', 'No cashier window assigned. Please contact an administrator.');
+        swal?.fire({ icon: 'error', title: 'No assigned window', text: 'Please contact an administrator.' });
         return;
     }
 
     if (props.current) {
         setFeedback('warning', 'Finish the current queue before calling the next one.');
+        swal?.fire({ icon: 'warning', title: 'Queue in progress', text: 'Finish the current queue before calling the next one.' });
         return;
     }
 
@@ -52,29 +55,41 @@ const callNext = () => {
         .then((response) => {
             if (response.data?.status === 'ok') {
                 setFeedback('success', 'Next queue has been called.');
+                swal?.fire({ icon: 'success', title: 'Called', text: 'Next queue has been called.' });
                 refreshData();
                 return;
             }
 
             if (response.data?.status === 'empty') {
                 setFeedback('warning', 'No waiting queues available.');
+                swal?.fire({ icon: 'info', title: 'No queue', text: 'No waiting queues available.' });
                 return;
             }
 
             setFeedback('error', 'Unable to call next queue.');
+            swal?.fire({ icon: 'error', title: 'Failed', text: 'Unable to call next queue.' });
         })
         .catch(() => {
             setFeedback('error', 'An error occurred while calling the next queue.');
+            swal?.fire({ icon: 'error', title: 'Error', text: 'An error occurred while calling the next queue.' });
         })
         .finally(() => {
             processing.value = false;
         });
 };
 
-const skip = () => {
+const skip = async () => {
     if (!props.current) return;
-    
-    if (!confirm('Skip this queue?')) return;
+
+    const decision = await swal?.fire({
+        icon: 'warning',
+        title: 'Skip queue?',
+        text: 'This will mark the current queue as skipped.',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, skip',
+    });
+
+    if (swal && !decision?.isConfirmed) return;
     
     processing.value = true;
 
@@ -82,14 +97,17 @@ const skip = () => {
         .then((response) => {
             if (response.data?.status === 'ok') {
                 setFeedback('success', 'Queue has been skipped.');
+                swal?.fire({ icon: 'success', title: 'Skipped', text: 'Queue has been skipped.' });
                 refreshData();
                 return;
             }
 
             setFeedback('error', 'Queue was not found.');
+            swal?.fire({ icon: 'error', title: 'Not found', text: 'Queue was not found.' });
         })
         .catch(() => {
             setFeedback('error', 'An error occurred while skipping the queue.');
+            swal?.fire({ icon: 'error', title: 'Error', text: 'An error occurred while skipping the queue.' });
         })
         .finally(() => {
             processing.value = false;
@@ -105,24 +123,35 @@ const recall = () => {
         .then((response) => {
             if (response.data?.status === 'ok') {
                 setFeedback('success', 'Queue has been recalled.');
+                swal?.fire({ icon: 'success', title: 'Recalled', text: 'Queue has been recalled.' });
                 refreshData();
                 return;
             }
 
             setFeedback('error', 'Queue was not found.');
+            swal?.fire({ icon: 'error', title: 'Not found', text: 'Queue was not found.' });
         })
         .catch(() => {
             setFeedback('error', 'An error occurred while recalling the queue.');
+            swal?.fire({ icon: 'error', title: 'Error', text: 'An error occurred while recalling the queue.' });
         })
         .finally(() => {
             processing.value = false;
         });
 };
 
-const complete = () => {
+const complete = async () => {
     if (!props.current) return;
-    
-    if (!confirm('Mark this queue as completed?')) return;
+
+    const decision = await swal?.fire({
+        icon: 'question',
+        title: 'Complete queue?',
+        text: 'This will mark the current queue as completed.',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, complete',
+    });
+
+    if (swal && !decision?.isConfirmed) return;
     
     processing.value = true;
 
@@ -130,14 +159,17 @@ const complete = () => {
         .then((response) => {
             if (response.data?.status === 'ok') {
                 setFeedback('success', 'Queue has been marked as completed.');
+                swal?.fire({ icon: 'success', title: 'Completed', text: 'Queue has been marked as completed.' });
                 refreshData();
                 return;
             }
 
             setFeedback('error', 'Queue was not found.');
+            swal?.fire({ icon: 'error', title: 'Not found', text: 'Queue was not found.' });
         })
         .catch(() => {
             setFeedback('error', 'An error occurred while completing the queue.');
+            swal?.fire({ icon: 'error', title: 'Error', text: 'An error occurred while completing the queue.' });
         })
         .finally(() => {
             processing.value = false;
@@ -149,6 +181,7 @@ const reinstate = (queue) => {
 
     if (queue.skip_count >= 2 || queue.is_reinstated) {
         setFeedback('warning', 'Queue is no longer eligible for reinstatement.');
+        swal?.fire({ icon: 'warning', title: 'Not eligible', text: 'Queue is no longer eligible for reinstatement.' });
         return;
     }
 
@@ -158,15 +191,18 @@ const reinstate = (queue) => {
         .then((response) => {
             if (response.data?.status === 'ok') {
                 setFeedback('success', 'Queue has been reinstated and returned to waiting.');
+                swal?.fire({ icon: 'success', title: 'Reinstated', text: 'Queue has been reinstated and returned to waiting.' });
                 refreshData();
                 return;
             }
 
             setFeedback('error', response.data?.message || 'Queue is not eligible for reinstatement.');
+            swal?.fire({ icon: 'error', title: 'Failed', text: response.data?.message || 'Queue is not eligible for reinstatement.' });
         })
         .catch((error) => {
             const message = error?.response?.data?.message || 'An error occurred while reinstating the queue.';
             setFeedback('error', message);
+            swal?.fire({ icon: 'error', title: 'Error', text: message });
         })
         .finally(() => {
             processing.value = false;

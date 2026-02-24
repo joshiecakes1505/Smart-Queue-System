@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { computed, ref } from 'vue'
 import { usePolling } from '@/Composables/usePolling'
 
 const props = defineProps({ queue_number: String })
@@ -9,7 +9,18 @@ const liveData = ref({ windows: [] })
 const loading = ref(true)
 const error = ref(null)
 
-// Calculate position ordinal suffix
+const nowServingQueues = computed(() => {
+  return (liveData.value?.windows || [])
+    .filter((window) => window.current)
+    .map((window) => ({
+      windowName: window.name,
+      queueNumber: window.current.queue_number,
+      serviceCategory: window.current.service_category,
+    }))
+})
+
+const firstNowServing = computed(() => nowServingQueues.value[0] || null)
+
 const positionSuffix = computed(() => {
   if (!queueData.value?.position) return ''
   const pos = queueData.value.position
@@ -22,168 +33,183 @@ const positionSuffix = computed(() => {
   }
 })
 
-// Status-based messaging
-const statusMessage = computed(() => {
+const statusText = computed(() => {
   if (!queueData.value) return 'Loading...'
-  const status = queueData.value.status
-  
-  switch (status) {
+
+  switch (queueData.value.status) {
     case 'called':
-      return `Being served at ${queueData.value.cashier_window || 'Cashier'}`
+      return `Now called at ${queueData.value.cashier_window || 'Cashier Window'}`
     case 'completed':
       return 'Service completed'
     case 'skipped':
-      return 'Skipped'
+      return 'Skipped (please see frontdesk)'
     case 'waiting':
-      return `Position ${queueData.value.position} in queue`
+      return `Waiting • #${queueData.value.position || '-'} in line`
     default:
-      return `Status: ${status}`
+      return `Status: ${queueData.value.status}`
   }
 })
 
-// Fetch queue specific data
+const statusClass = computed(() => {
+  if (!queueData.value) return 'bg-gray-100 text-gray-700 border-gray-200'
+
+  switch (queueData.value.status) {
+    case 'called':
+      return 'bg-[#fff4cc] text-[#800000] border-[#FFC107]'
+    case 'completed':
+      return 'bg-green-50 text-green-700 border-green-200'
+    case 'skipped':
+      return 'bg-gray-100 text-gray-700 border-gray-200'
+    default:
+      return 'bg-[#fdf2f2] text-[#800000] border-[#f7cccc]'
+  }
+})
+
+const estimatedServedTimeLabel = computed(() => {
+  const value = queueData.value?.estimated_served_at
+  if (!value) return '—'
+
+  return new Date(value).toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+})
+
 const fetchQueueData = async () => {
   try {
-    const res = await fetch(`/api/queue/${props.queue_number}/status`)
-    if (!res.ok) {
+    const response = await fetch(`/api/queue/${props.queue_number}/status`)
+
+    if (!response.ok) {
       error.value = 'Queue not found'
+      queueData.value = null
       return
     }
-    queueData.value = await res.json()
+
+    queueData.value = await response.json()
     error.value = null
-  } catch (err) {
-    console.error('Failed to fetch queue data:', err)
-    error.value = 'Connection error'
+  } catch (fetchError) {
+    console.error('Failed to fetch queue data:', fetchError)
+    error.value = 'Unable to load queue status'
   }
 }
 
-// Fetch live windows data
 const fetchLiveData = async () => {
   try {
-    const res = await fetch('/public/live')
-    liveData.value = await res.json()
-  } catch (err) {
-    console.error('Failed to fetch live data:', err)
+    const response = await fetch('/public/live')
+    if (!response.ok) return
+    liveData.value = await response.json()
+  } catch (fetchError) {
+    console.error('Failed to fetch live data:', fetchError)
   }
 }
 
-// Start polling both endpoints
-usePolling(async () => {
-  await fetchQueueData()
-  await fetchLiveData()
-}, 5000)
+const fetchAll = async () => {
+  loading.value = true
+  await Promise.all([fetchQueueData(), fetchLiveData()])
+  loading.value = false
+}
+
+usePolling(fetchAll, 5000)
 </script>
 
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-    <div class="w-full max-w-md">
-      <!-- Error State -->
-      <div v-if="error" class="bg-white rounded-2xl shadow-2xl p-8">
-        <div class="text-center">
-          <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-          </div>
-          <h2 class="text-xl font-bold text-gray-800 mb-2">{{ error }}</h2>
-          <p class="text-gray-600">Queue number: <strong>{{ queue_number }}</strong></p>
-        </div>
+  <div class="min-h-screen bg-[#f7f5f3] py-4 px-3 sm:px-4">
+    <div class="max-w-md mx-auto space-y-4">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 text-center">
+        <p class="text-xs uppercase tracking-wide text-gray-500">Batangas Eastern Colleges</p>
+        <h1 class="text-lg font-semibold text-[#800000]">Queue Status Tracker</h1>
+        <p class="text-xs text-gray-500 mt-1">Live updates every 5 seconds</p>
       </div>
 
-      <!-- Main Queue Card -->
-      <div v-else class="bg-white rounded-2xl shadow-2xl p-8">
-        <div class="text-center mb-6">
-          <p class="text-gray-600 text-sm uppercase tracking-wide">Your Queue Number</p>
-          <h1 class="text-6xl font-bold text-blue-600 mt-2">{{ queueData?.queue_number || queue_number }}</h1>
+      <div v-if="loading && !queueData && !error" class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 text-center text-gray-500">
+        Loading queue details...
+      </div>
+
+      <div v-else-if="error" class="bg-white rounded-xl shadow-sm border border-red-200 p-6 text-center">
+        <h2 class="text-lg font-semibold text-red-700">{{ error }}</h2>
+        <p class="text-sm text-gray-600 mt-2">Queue Number: <span class="font-semibold text-[#800000]">{{ queue_number }}</span></p>
+      </div>
+
+      <template v-else>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+          <p class="text-xs uppercase tracking-wide text-gray-500 mb-2">Now Serving</p>
+          <div v-if="firstNowServing" class="bg-[#800000] text-white rounded-lg p-4 text-center">
+            <p class="text-xs mb-1">{{ firstNowServing.windowName }}</p>
+            <p class="text-4xl font-bold leading-none">{{ firstNowServing.queueNumber }}</p>
+            <p class="text-xs mt-2 text-[#ffe8a3]">{{ firstNowServing.serviceCategory || 'General Service' }}</p>
+          </div>
+          <div v-else class="bg-gray-50 rounded-lg p-4 text-center text-gray-500 text-sm">
+            No active queue being served right now.
+          </div>
         </div>
 
-        <div v-if="queueData" class="grid grid-cols-1 gap-3 mb-6 border border-gray-100 rounded-lg p-4 bg-gray-50">
-          <div class="flex items-center justify-between">
-            <span class="text-gray-600">Client Name</span>
-            <span class="font-semibold text-gray-900">{{ queueData.client_name || 'Walk-in Client' }}</span>
-          </div>
-          <div class="flex items-center justify-between">
-            <span class="text-gray-600">Client Number</span>
-            <span class="font-semibold text-gray-900">{{ queueData.client_number || 'Not provided' }}</span>
-          </div>
-          <div class="flex items-center justify-between">
-            <span class="text-gray-600">Queue</span>
-            <span class="font-semibold text-gray-900">{{ queueData.service_category || 'General' }}</span>
-          </div>
-        </div>
-
-        <!-- QR Code -->
-        <div class="flex justify-center mb-8 p-4 bg-gray-50 rounded-lg">
-          <img 
-            :src="`/qr/${queue_number}`"
-            alt="QR Code"
-            class="w-48 h-48 border border-gray-200 rounded"
-          />
-        </div>
-
-        <!-- Status Section -->
-        <div v-if="queueData" class="space-y-4 mb-8 border-t border-gray-200 pt-6">
-          <!-- Status Badge -->
-          <div class="text-center">
-            <p 
-              class="inline-block px-4 py-2 rounded-full font-semibold text-sm"
-              :class="{
-                'bg-green-100 text-green-800': queueData.status === 'waiting',
-                'bg-blue-100 text-blue-800': queueData.status === 'called',
-                'bg-purple-100 text-purple-800': queueData.status === 'completed',
-                'bg-gray-100 text-gray-800': queueData.status === 'skipped',
-              }"
-            >
-              {{ statusMessage }}
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+          <p class="text-xs uppercase tracking-wide text-gray-500">Your Queue Number</p>
+          <div class="mt-2 bg-[#fff4cc] border border-[#FFC107] rounded-lg p-4 text-center">
+            <p class="text-5xl font-bold text-[#800000] leading-none">
+              {{ queueData?.queue_number || queue_number }}
             </p>
           </div>
 
-          <!-- Position -->
-          <div v-if="queueData.position" class="flex justify-between items-center">
-            <span class="text-gray-600">Position in Queue:</span>
-            <span class="text-3xl font-bold text-green-600">
-              {{ queueData.position }}<span class="text-lg">{{ positionSuffix }}</span>
-            </span>
+          <div class="mt-3 border rounded-lg px-3 py-2 text-sm" :class="statusClass">
+            {{ statusText }}
           </div>
 
-          <!-- Wait Time -->
-          <div v-if="queueData.eta_minutes !== null" class="flex justify-between items-center">
-            <span class="text-gray-600">Estimated Wait:</span>
-            <span class="text-2xl font-semibold text-orange-600">
-              {{ queueData.eta_minutes === 0 ? 'Next' : `~${queueData.eta_minutes} min` }}
-            </span>
-          </div>
-
-          <!-- Windows Status -->
-          <div v-if="liveData.windows?.length" class="mt-6 border-t border-gray-200 pt-4">
-            <p class="text-gray-600 font-semibold mb-3">Windows Status</p>
-            <div class="space-y-2">
-              <div 
-                v-for="window in liveData.windows" 
-                :key="window.id"
-                class="flex justify-between items-center p-3 bg-gray-50 rounded"
-              >
-                <div>
-                  <p class="font-medium text-gray-800">{{ window.name }}</p>
-                  <p class="text-xs text-gray-500">{{ window.assigned_user || '—' }}</p>
-                </div>
-                <span class="text-sm">
-                  <span v-if="window.current" class="text-green-600 font-bold text-lg">
-                    {{ window.current.queue_number }}
-                  </span>
-                  <span v-else class="text-gray-400">Idle</span>
-                </span>
-              </div>
+          <div class="mt-4 grid grid-cols-2 gap-3 text-sm">
+            <div class="bg-gray-50 rounded-lg px-3 py-2">
+              <p class="text-gray-500 text-xs">Position</p>
+              <p class="font-semibold text-[#800000]">
+                <template v-if="queueData?.position">
+                  {{ queueData.position }}<span class="text-xs">{{ positionSuffix }}</span>
+                </template>
+                <template v-else>
+                  —
+                </template>
+              </p>
+            </div>
+            <div class="bg-gray-50 rounded-lg px-3 py-2">
+              <p class="text-gray-500 text-xs">Estimated Wait</p>
+              <p class="font-semibold text-[#800000]">
+                {{ queueData?.eta_minutes === 0 ? 'Next' : (queueData?.eta_minutes !== null ? `~${queueData?.eta_minutes} min` : '—') }}
+              </p>
+            </div>
+            <div class="bg-gray-50 rounded-lg px-3 py-2 col-span-2">
+              <p class="text-gray-500 text-xs">Estimated Serving Time</p>
+              <p class="font-semibold text-[#800000]">{{ estimatedServedTimeLabel }}</p>
+            </div>
+            <div class="bg-gray-50 rounded-lg px-3 py-2 col-span-2">
+              <p class="text-gray-500 text-xs">Queues Ahead</p>
+              <p class="font-semibold text-[#800000]">
+                {{ queueData?.queues_ahead ?? '—' }}
+              </p>
+              <p class="text-xs text-gray-500 mt-1" v-if="queueData?.queues_ahead !== null">
+                {{ queueData?.waiting_ahead ?? 0 }} waiting + {{ queueData?.active_called_ahead ?? 0 }} currently serving
+              </p>
+            </div>
+            <div class="bg-gray-50 rounded-lg px-3 py-2 col-span-2">
+              <p class="text-gray-500 text-xs">Service Category</p>
+              <p class="font-semibold text-gray-800">{{ queueData?.service_category || 'General Service' }}</p>
             </div>
           </div>
         </div>
 
-        <!-- Info Message -->
-        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center text-sm text-blue-800">
-          <p class="font-semibold">Live Updates Every 5 Seconds</p>
-          <p class="text-xs text-blue-600 mt-1">Keep this page open for real-time status updates</p>
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+          <p class="text-xs uppercase tracking-wide text-gray-500 mb-3">All Windows</p>
+          <div class="space-y-2">
+            <div
+              v-for="window in liveData.windows"
+              :key="window.id"
+              class="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 flex items-center justify-between"
+            >
+              <div>
+                <p class="text-sm font-semibold text-[#800000]">{{ window.name }}</p>
+                <p class="text-xs text-gray-500">{{ window.assigned_user || 'Unassigned' }}</p>
+              </div>
+              <p class="text-sm font-semibold text-gray-800">{{ window.current?.queue_number || 'Idle' }}</p>
+            </div>
+          </div>
         </div>
-      </div>
+      </template>
     </div>
   </div>
 </template>
