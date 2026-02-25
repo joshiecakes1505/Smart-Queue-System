@@ -222,7 +222,8 @@ usePolling(() => {
                             <tr
                                 v-for="queue in waitingQueues"
                                 :key="queue.id"
-                                class="border-b border-gray-100 hover:bg-gray-50"
+                                class="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+                                @click="router.visit(route('frontdesk.queues.print', queue.id))"
                             >
                                 <td class="py-3 px-4 font-semibold text-[#800000]">{{ queue.queue_number }}</td>
                                 <td class="py-3 px-4">{{ queue.service_category?.name || 'N/A' }}</td>

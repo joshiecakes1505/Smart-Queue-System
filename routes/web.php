@@ -64,6 +64,11 @@ Route::middleware(['auth:frontdesk', 'role:frontdesk'])->prefix('frontdesk')->na
     Route::get('queues/{queue}/print', [FrontDeskQueueController::class, 'print'])->name('queues.print');
 });
 
+Route::middleware(['auth:frontdesk', 'role:frontdesk'])->group(function () {
+    Route::post('/queues/{queue}/print', [FrontDeskQueueController::class, 'printReceipt'])
+        ->name('frontdesk.queues.print-receipt');
+});
+
 // Cashier routes
 Route::middleware(['auth:cashier', 'role:cashier'])->prefix('cashier')->name('cashier.')->group(function () {
     Route::get('/', [CashierController::class, 'index'])->name('index');

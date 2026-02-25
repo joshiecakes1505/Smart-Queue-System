@@ -5,8 +5,10 @@ namespace App\Http\Controllers\FrontDesk;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreQueueRequest;
 use App\Models\Queue;
+use App\Services\PrintService;
 use App\Models\ServiceCategory;
 use App\Services\QueueService;
+use Illuminate\Http\JsonResponse;
 use Inertia\Inertia;
 
 class QueueController extends Controller
@@ -62,6 +64,24 @@ class QueueController extends Controller
         
         return Inertia::render('FrontDesk/PrintTicket', [
             'queue' => $queue,
+        ]);
+    }
+
+    public function printReceipt(Queue $queue, PrintService $printService): JsonResponse
+    {
+        $result = $printService->printQueueReceipt($queue);
+
+        if (! $result['ok']) {
+            return response()->json([
+                'ok' => false,
+                'message' => $result['message'],
+                'error' => $result['error'] ?? null,
+            ], $result['status'] ?? 500);
+        }
+
+        return response()->json([
+            'ok' => true,
+            'message' => $result['message'] ?? 'Receipt printed successfully',
         ]);
     }
 }

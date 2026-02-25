@@ -1,7 +1,9 @@
 <script setup>
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { computed } from 'vue';
-import { onMounted } from 'vue';
+import { ref } from 'vue';
+import axios from 'axios';
+import Swal from 'sweetalert2';
+import { Head } from '@inertiajs/vue3';
 
 const props = defineProps({
     queue: {
@@ -11,93 +13,54 @@ const props = defineProps({
 });
 
 const qrCodeUrl = computed(() => route('qr.generate', props.queue.queue_number));
+const printReceiptEndpoint = computed(() => route('frontdesk.queues.print-receipt', props.queue.id));
+const isPrinting = ref(false);
 
-const escapeHtml = (text) => {
-    return String(text)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
+const browserPrint = () => {
+    window.print();
 };
 
-const buildTextTicket = () => {
-    const queue = props.queue;
-    const statusUrl = route('public.queue.show', queue.queue_number);
-    const lines = [
-        'BATANGAS EASTERN COLLEGES',
-        'SMART QUEUE SYSTEM',
-        '--------------------------------',
-        `Queue Number : ${queue.queue_number ?? 'N/A'}`,
-        `Client Name  : ${queue.client_name || 'Walk-in Client'}`,
-        `Client Type  : ${clientTypeLabel(queue.client_type)}`,
-        `Service      : ${queue.service_category?.name || 'N/A'}`,
-        `Date & Time  : ${formatDate(queue.created_at)}`,
-        '--------------------------------',
-        'Track Queue Status (Text-Only):',
-        statusUrl,
-        '--------------------------------',
-        'Please wait for your queue number',
-        'to be called. Thank you!'
-    ];
-
-    return lines.join('\n');
-};
-
-const printTextTicket = () => {
-    const ticketContent = buildTextTicket();
-    const iframe = document.createElement('iframe');
-    iframe.style.position = 'fixed';
-    iframe.style.right = '0';
-    iframe.style.bottom = '0';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
-    iframe.style.border = '0';
-    document.body.appendChild(iframe);
-
-    const printDocument = iframe.contentWindow?.document;
-
-    if (!printDocument || !iframe.contentWindow) {
-        window.print();
+const printReceipt = async () => {
+    if (isPrinting.value) {
         return;
     }
 
-    printDocument.open();
-    printDocument.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="utf-8" />
-            <title>Queue Ticket</title>
-            <style>
-                @page { margin: 8mm; }
-                body {
-                    margin: 0;
-                    font-family: monospace;
-                    font-size: 14px;
-                    line-height: 1.35;
-                    white-space: pre-wrap;
-                }
-            </style>
-        </head>
-        <body>${escapeHtml(ticketContent)}</body>
-        </html>
-    `);
+    isPrinting.value = true;
 
-    printDocument.close();
-    setTimeout(() => {
-        iframe.contentWindow.focus();
-        iframe.contentWindow.print();
-        document.body.removeChild(iframe);
-    }, 200);
+    try {
+        const response = await axios.post(printReceiptEndpoint.value);
+
+        await Swal.fire({
+            icon: 'success',
+            title: response.data?.message || 'Receipt printed successfully',
+            timer: 1800,
+            showConfirmButton: false,
+        });
+    } catch (error) {
+        let message = 'Unable to print receipt. Please check printer and print service.';
+
+        if (error?.response?.data?.message) {
+            message = error.response.data.message;
+        } else if (error?.code === 'ERR_NETWORK') {
+            message = 'Print service offline or network error.';
+        }
+
+        const result = await Swal.fire({
+            icon: 'error',
+            title: 'Print failed',
+            text: message,
+            confirmButtonText: 'Browser Print (with QR)',
+            showCancelButton: true,
+            cancelButtonText: 'Close',
+        });
+
+        if (result.isConfirmed) {
+            browserPrint();
+        }
+    } finally {
+        isPrinting.value = false;
+    }
 };
-
-
-onMounted(() => {
-    setTimeout(() => {
-        printTextTicket();
-    }, 250);
-});
 
 const formatDate = (datetime) => {
     return new Date(datetime).toLocaleString('en-US', {
@@ -122,7 +85,8 @@ const clientTypeLabel = (type) => {
 </script>
 
 <template>
-    <AuthenticatedLayout title="Print Queue Ticket">
+    <Head title="Print Queue Ticket" />
+    <div class="min-h-screen bg-gray-50 py-8 px-4 print:bg-white print:py-0">
         <div class="max-w-4xl mx-auto">
             <!-- Action Buttons (hide on print) -->
             <div class="mb-6 flex gap-4 print:hidden">
@@ -133,113 +97,66 @@ const clientTypeLabel = (type) => {
                     Back to Dashboard
                 </a>
                 <button
-                    @click="printTextTicket"
+                    @click="printReceipt"
                     class="bg-[#800000] hover:bg-[#660000] text-white px-6 py-3 rounded-lg font-semibold transition"
+                    :disabled="isPrinting"
                 >
-                    Print Ticket (Text Only)
+                    {{ isPrinting ? 'Printing...' : 'Print Ticket' }}
+                </button>
+                <button
+                    @click="browserPrint"
+                    type="button"
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition"
+                >
+                    Browser Print
                 </button>
             </div>
 
-            <!-- Ticket Preview -->
-            <div class="bg-white rounded-lg shadow-lg p-8 print:shadow-none print:p-4">
-                <!-- School Header -->
-                <div class="text-center mb-6 border-b-2 border-[#800000] pb-4">
-                    <h1 class="text-3xl font-bold text-[#800000]">Batangas Eastern Colleges</h1>
-                    <p class="text-lg text-gray-600 mt-1">Smart Queue System</p>
-                </div>
-
-                <!-- Queue Information -->
-                <div class="space-y-4 mb-6">
-                    <!-- Queue Number - Large Display -->
-                    <div class="text-center bg-[#800000] text-white py-8 rounded-lg">
-                        <p class="text-sm font-medium mb-2">Queue Number</p>
-                        <p class="text-6xl font-bold">{{ queue.queue_number }}</p>
+            <div class="flex justify-center">
+                <div class="w-full max-w-sm bg-white border border-gray-300 rounded-lg shadow-sm p-5 print:shadow-none print:border-black print:rounded-none print:p-3">
+                    <div class="text-center border-b border-dashed border-gray-400 pb-3 mb-3">
+                        <h1 class="text-lg font-bold text-[#800000]">Smart Queue Receipt</h1>
+                        <p class="text-xs text-gray-600">Batangas Eastern Colleges</p>
                     </div>
 
-                    <!-- Client Details -->
-                    <div class="grid grid-cols-2 gap-4 text-sm">
-                        <div class="border-l-4 border-[#FFC107] pl-3">
-                            <p class="text-gray-600">Client Name</p>
-                            <p class="font-semibold text-lg">{{ queue.client_name || 'Walk-in Client' }}</p>
-                        </div>
+                    <div class="text-center mb-4">
+                        <p class="text-xs text-gray-500">Queue Number</p>
+                        <p class="text-5xl font-bold text-[#800000] leading-tight">{{ queue.queue_number }}</p>
+                    </div>
 
-                        <div class="border-l-4 border-[#FFC107] pl-3">
-                            <p class="text-gray-600">Client Type</p>
-                            <p class="font-semibold text-lg">{{ clientTypeLabel(queue.client_type) }}</p>
+                    <div class="text-sm space-y-2 border-y border-dashed border-gray-400 py-3 mb-4">
+                        <div class="flex justify-between gap-3">
+                            <span class="text-gray-500">Client</span>
+                            <span class="font-semibold text-right">{{ queue.client_name || 'Walk-in Client' }}</span>
                         </div>
-
-                        <div class="border-l-4 border-[#FFC107] pl-3">
-                            <p class="text-gray-600">Service Category</p>
-                            <p class="font-semibold text-lg">{{ queue.service_category?.name }}</p>
+                        <div class="flex justify-between gap-3">
+                            <span class="text-gray-500">Type</span>
+                            <span class="font-semibold text-right">{{ clientTypeLabel(queue.client_type) }}</span>
                         </div>
-
-                        <div class="border-l-4 border-[#FFC107] pl-3">
-                            <p class="text-gray-600">Date & Time</p>
-                            <p class="font-semibold text-lg">{{ formatDate(queue.created_at) }}</p>
+                        <div class="flex justify-between gap-3">
+                            <span class="text-gray-500">Service</span>
+                            <span class="font-semibold text-right">{{ queue.service_category?.name || 'N/A' }}</span>
+                        </div>
+                        <div class="flex justify-between gap-3">
+                            <span class="text-gray-500">Time</span>
+                            <span class="font-semibold text-right">{{ formatDate(queue.created_at) }}</span>
                         </div>
                     </div>
-                </div>
 
-                <!-- QR Code -->
-                <div class="text-center mb-6">
-                    <p class="text-gray-600 text-sm mb-3">Scan to track your queue status</p>
-                    <img 
-                        :src="qrCodeUrl" 
-                        alt="Queue QR Code" 
-                        class="mx-auto w-48 h-48 border-4 border-[#800000] rounded-lg"
-                    />
-                </div>
+                    <div class="text-center mb-3">
+                        <p class="text-xs text-gray-500 mb-2">Scan QR for queue status</p>
+                        <img
+                            :src="qrCodeUrl"
+                            alt="Queue QR Code"
+                            class="mx-auto w-36 h-36 border border-gray-300 p-1"
+                        />
+                    </div>
 
-                <!-- Footer Instructions -->
-                <div class="text-center border-t-2 border-gray-200 pt-4">
-                    <p class="text-sm text-gray-600">
-                        Please wait for your queue number to be called.
-                    </p>
-                    <p class="text-sm text-gray-600">
-                        You can track your queue status by scanning the QR code above.
-                    </p>
-                    <p class="text-xs text-gray-500 mt-2">
-                        Thank you for your patience!
-                    </p>
+                    <div class="text-center border-t border-dashed border-gray-400 pt-3">
+                        <p class="text-xs text-gray-600">Please wait for your number to be called.</p>
+                    </div>
                 </div>
             </div>
         </div>
-    </AuthenticatedLayout>
+    </div>
 </template>
-
-<style>
-@media print {
-    body {
-        margin: 0;
-        padding: 0;
-    }
-    
-    /* Hide everything except the ticket */
-    body * {
-        visibility: hidden;
-    }
-    
-    .print\:shadow-none,
-    .print\:shadow-none * {
-        visibility: visible;
-    }
-    
-    .print\:shadow-none {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 80mm;
-        box-shadow: none !important;
-    }
-    
-    /* Hide action buttons */
-    .print\:hidden {
-        display: none !important;
-    }
-    
-    /* Adjust padding for thermal printer */
-    .print\:p-4 {
-        padding: 1rem !important;
-    }
-}
-</style>

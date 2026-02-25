@@ -15,6 +15,7 @@ const logout = () => {
 };
 
 const page = usePage();
+const schoolLogoUrl = '/images/school-logo.png';
 
 const roleName = computed(() => page.props.auth?.user?.role_name || null);
 
@@ -53,9 +54,16 @@ const navigationLinks = computed(() => {
             <div class="container mx-auto px-6 py-4">
                 <div class="flex justify-between items-center">
                     <!-- System Name -->
-                    <div>
-                        <h1 class="text-lg font-semibold">Smart Queuing System - BEC</h1>
-                        <p class="text-xs text-yellow-200">{{ title }}</p>
+                    <div class="flex items-center gap-3">
+                        <img
+                            :src="schoolLogoUrl"
+                            alt="School Logo"
+                            class="h-11 w-11 object-contain"
+                        />
+                        <div>
+                            <h1 class="text-lg font-semibold">Smart Queuing System - BEC</h1>
+                            <p class="text-xs text-yellow-200">{{ title }}</p>
+                        </div>
                     </div>
 
                     <!-- User Info & Logout -->

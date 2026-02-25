@@ -1,6 +1,8 @@
 <script setup>
 import { Head } from '@inertiajs/vue3';
 
+const schoolLogoUrl = '/images/school-logo.png';
+
 defineProps({
     title: {
         type: String,
@@ -16,8 +18,17 @@ defineProps({
         <!-- Maroon Header Bar -->
         <header class="bg-[#800000] text-white py-4 shadow-sm">
             <div class="container mx-auto px-6">
-                <h1 class="text-xl font-semibold">Smart School Cashier Queuing System</h1>
-                <p class="text-sm text-yellow-200">Batangas Eastern Colleges</p>
+                <div class="flex items-center gap-3">
+                    <img
+                        :src="schoolLogoUrl"
+                        alt="School Logo"
+                        class="h-12 w-12 object-contain"
+                    />
+                    <div>
+                        <h1 class="text-xl font-semibold">Smart School Cashier Queuing System</h1>
+                        <p class="text-sm text-yellow-200">Batangas Eastern Colleges</p>
+                    </div>
+                </div>
             </div>
         </header>
 

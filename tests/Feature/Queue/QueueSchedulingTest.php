@@ -9,6 +9,7 @@ use App\Models\ServiceCategory;
 use App\Models\User;
 use App\Services\QueueService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Assert;
 use Tests\TestCase;
 
 class QueueSchedulingTest extends TestCase
@@ -60,19 +61,19 @@ class QueueSchedulingTest extends TestCase
         ]);
 
         $served1 = $service->callNext($window->id, $category->id);
-        $this->assertSame($first->id, $served1?->id);
+        Assert::assertSame($first->id, $served1?->id);
         $service->complete($served1->id);
 
         $served2 = $service->callNext($window->id, $category->id);
-        $this->assertSame($second->id, $served2?->id);
+        Assert::assertSame($second->id, $served2?->id);
         $service->complete($served2->id);
 
         $served3 = $service->callNext($window->id, $category->id);
-        $this->assertSame($priority->id, $served3?->id);
+        Assert::assertSame($priority->id, $served3?->id);
         $service->complete($served3->id);
 
         $served4 = $service->callNext($window->id, $category->id);
-        $this->assertSame($thirdRegular->id, $served4?->id);
+        Assert::assertSame($thirdRegular->id, $served4?->id);
     }
 
     public function test_eta_is_calculated_for_waiting_queue(): void
@@ -111,10 +112,10 @@ class QueueSchedulingTest extends TestCase
 
         $eta = $service->estimateWaitMinutes($target);
 
-        $this->assertNotNull($eta);
-        $this->assertIsInt($eta);
-        $this->assertGreaterThanOrEqual(0, $eta);
-        $this->assertSame(Queue::STATUS_WAITING, $target->status);
+        Assert::assertNotNull($eta);
+        Assert::assertIsInt($eta);
+        Assert::assertGreaterThanOrEqual(0, $eta);
+        Assert::assertSame(Queue::STATUS_WAITING, $target->status);
     }
 
     public function test_create_queue_skips_existing_queue_number_and_generates_next_available(): void
@@ -142,6 +143,6 @@ class QueueSchedulingTest extends TestCase
             'client_type' => Queue::CLIENT_TYPE_STUDENT,
         ]);
 
-        $this->assertSame('T-002', $newQueue->queue_number);
+        Assert::assertSame('T-002', $newQueue->queue_number);
     }
 }
