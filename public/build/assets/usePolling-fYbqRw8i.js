@@ -1,0 +1,1 @@
+import{C as s,L as i,d as l}from"./app-A4PEbC9S.js";function c(r,u=5e3){const t=l(!1);let e=null;const n=async()=>{t.value||(t.value=!0,await o())},a=()=>{t.value=!1,e&&clearTimeout(e)},o=async()=>{if(t.value)try{await r()}finally{e=setTimeout(o,u)}};return s(n),i(a),{start:n,stop:a,running:t}}export{c as u};
