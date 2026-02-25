@@ -12,14 +12,90 @@ const props = defineProps({
 
 const qrCodeUrl = computed(() => route('qr.generate', props.queue.queue_number));
 
-const printTicket = () => {
-    window.print();
+const escapeHtml = (text) => {
+    return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+};
+
+const buildTextTicket = () => {
+    const queue = props.queue;
+    const statusUrl = route('public.queue.show', queue.queue_number);
+    const lines = [
+        'BATANGAS EASTERN COLLEGES',
+        'SMART QUEUE SYSTEM',
+        '--------------------------------',
+        `Queue Number : ${queue.queue_number ?? 'N/A'}`,
+        `Client Name  : ${queue.client_name || 'Walk-in Client'}`,
+        `Client Type  : ${clientTypeLabel(queue.client_type)}`,
+        `Service      : ${queue.service_category?.name || 'N/A'}`,
+        `Date & Time  : ${formatDate(queue.created_at)}`,
+        '--------------------------------',
+        'Track Queue Status (Text-Only):',
+        statusUrl,
+        '--------------------------------',
+        'Please wait for your queue number',
+        'to be called. Thank you!'
+    ];
+
+    return lines.join('\n');
+};
+
+const printTextTicket = () => {
+    const ticketContent = buildTextTicket();
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    document.body.appendChild(iframe);
+
+    const printDocument = iframe.contentWindow?.document;
+
+    if (!printDocument || !iframe.contentWindow) {
+        window.print();
+        return;
+    }
+
+    printDocument.open();
+    printDocument.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8" />
+            <title>Queue Ticket</title>
+            <style>
+                @page { margin: 8mm; }
+                body {
+                    margin: 0;
+                    font-family: monospace;
+                    font-size: 14px;
+                    line-height: 1.35;
+                    white-space: pre-wrap;
+                }
+            </style>
+        </head>
+        <body>${escapeHtml(ticketContent)}</body>
+        </html>
+    `);
+
+    printDocument.close();
+    setTimeout(() => {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+        document.body.removeChild(iframe);
+    }, 200);
 };
 
 
 onMounted(() => {
     setTimeout(() => {
-        printTicket();
+        printTextTicket();
     }, 250);
 });
 
@@ -57,10 +133,10 @@ const clientTypeLabel = (type) => {
                     Back to Dashboard
                 </a>
                 <button
-                    @click="printTicket"
+                    @click="printTextTicket"
                     class="bg-[#800000] hover:bg-[#660000] text-white px-6 py-3 rounded-lg font-semibold transition"
                 >
-                    Print Ticket
+                    Print Ticket (Text Only)
                 </button>
             </div>
 

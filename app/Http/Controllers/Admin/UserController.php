@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Models\CashierWindow;
+use App\Models\Role;
 use App\Models\User;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Hash;
@@ -76,7 +77,11 @@ class UserController extends Controller
 
     public function create()
     {
-        $roles = \App\Models\Role::pluck('name', 'id');
+        $roles = Role::query()
+            ->whereIn('name', ['admin', 'cashier', 'frontdesk'])
+            ->orderByRaw("CASE name WHEN 'admin' THEN 1 WHEN 'cashier' THEN 2 WHEN 'frontdesk' THEN 3 ELSE 4 END")
+            ->get(['id', 'name']);
+
         return Inertia::render('Admin/Users/Create', ['roles' => $roles]);
     }
 
