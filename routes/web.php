@@ -81,7 +81,10 @@ Route::middleware(['auth:cashier', 'role:cashier'])->prefix('cashier')->name('ca
 
 // Public endpoints
 Route::get('/public/live', [PublicQueueController::class, 'liveView'])->name('public.live');
-Route::get('/public/queue/{queue_number}', [PublicQueueController::class, 'showQueueByNumber'])->name('public.queue.show');
+Route::get('/queue/{queue_number}', [PublicQueueController::class, 'showQueueByNumber'])->name('public.queue.show');
+Route::get('/public/queue/{queue_number}', function (string $queue_number) {
+    return redirect()->route('public.queue.show', ['queue_number' => $queue_number], 301);
+})->name('public.queue.legacy');
 Route::get('/api/queue/{queue_number}/status', [PublicQueueController::class, 'getQueueData'])->name('api.queue.status');
 
 // Display

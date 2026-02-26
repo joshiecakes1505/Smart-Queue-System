@@ -6,11 +6,12 @@ import { Head } from '@inertiajs/vue3'
 const data = ref({ windows: [], next_queues: [], timestamp: null })
 const refreshIntervalMs = 2000
 const isFullscreen = ref(false)
-const schoolLogoUrl = '/images/school-logo.png'
+const schoolLogoUrl = document.querySelector('meta[name="app-logo-url"]')?.getAttribute('content')
+  || `${window.location.origin}/images/school-logo.png`
 
 const fetchData = async () => {
   try {
-    const res = await fetch('/display/data')
+    const res = await fetch(window.route('display.data'))
     data.value = await res.json()
   } catch (error) {
     console.error('Failed to fetch display data:', error)

@@ -39,7 +39,14 @@ This will:
 
 1. Run backend tests (`php artisan test`)
 2. Build frontend assets (`npm run build`)
-3. Cache config/routes/views for production behavior
+3. Validate Vite manifest and build files (`php artisan deploy:check-assets`)
+4. Cache config/routes/views for production behavior
+
+You can run the asset check alone with:
+
+```
+composer run deploy:check-assets
+```
 
 ## 4) Start Server for Validation
 

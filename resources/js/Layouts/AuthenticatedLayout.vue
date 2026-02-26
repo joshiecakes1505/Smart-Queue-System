@@ -15,7 +15,8 @@ const logout = () => {
 };
 
 const page = usePage();
-const schoolLogoUrl = '/images/school-logo.png';
+const schoolLogoUrl = document.querySelector('meta[name="app-logo-url"]')?.getAttribute('content')
+    || `${window.location.origin}/images/school-logo.png`;
 
 const roleName = computed(() => page.props.auth?.user?.role_name || null);
 

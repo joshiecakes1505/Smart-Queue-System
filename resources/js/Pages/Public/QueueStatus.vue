@@ -77,7 +77,7 @@ const estimatedServedTimeLabel = computed(() => {
 
 const fetchQueueData = async () => {
   try {
-    const response = await fetch(`/api/queue/${props.queue_number}/status`)
+    const response = await fetch(window.route('api.queue.status', { queue_number: props.queue_number }))
 
     if (!response.ok) {
       error.value = 'Queue not found'
@@ -95,7 +95,7 @@ const fetchQueueData = async () => {
 
 const fetchLiveData = async () => {
   try {
-    const response = await fetch('/public/live')
+    const response = await fetch(window.route('public.live'))
     if (!response.ok) return
     liveData.value = await response.json()
   } catch (fetchError) {
