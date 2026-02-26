@@ -60,7 +60,7 @@ usePolling(() => {
 <template>
     <AuthenticatedLayout title="Front Desk Dashboard">
         <!-- Debug Info -->
-        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 overflow-x-auto">
             <p class="text-sm">Categories: {{ serviceCategories?.length || 0 }}</p>
             <p class="text-sm">Waiting Queues: {{ waitingQueues?.length || 0 }}</p>
         </div>
@@ -121,51 +121,51 @@ usePolling(() => {
                         <label class="block text-sm font-medium text-gray-700 mb-2">
                             Client Type <span class="text-red-500">*</span>
                         </label>
-                        <div class="flex gap-6">
-                            <label class="flex items-center cursor-pointer">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            <label class="flex items-start cursor-pointer min-w-0">
                                 <input
                                     v-model="form.client_type"
                                     type="radio"
                                     value="student"
                                     class="w-4 h-4 text-[#800000] border-gray-300 focus:ring-[#800000]"
                                 />
-                                <span class="ml-2 text-gray-700">Student</span>
+                                <span class="ml-2 text-sm leading-tight text-gray-700">Student</span>
                             </label>
-                            <label class="flex items-center cursor-pointer">
+                            <label class="flex items-start cursor-pointer min-w-0">
                                 <input
                                     v-model="form.client_type"
                                     type="radio"
                                     value="parent"
                                     class="w-4 h-4 text-[#800000] border-gray-300 focus:ring-[#800000]"
                                 />
-                                <span class="ml-2 text-gray-700">Parent</span>
+                                <span class="ml-2 text-sm leading-tight text-gray-700">Parent</span>
                             </label>
-                            <label class="flex items-center cursor-pointer">
+                            <label class="flex items-start cursor-pointer min-w-0">
                                 <input
                                     v-model="form.client_type"
                                     type="radio"
                                     value="visitor"
                                     class="w-4 h-4 text-[#800000] border-gray-300 focus:ring-[#800000]"
                                 />
-                                <span class="ml-2 text-gray-700">Visitor</span>
+                                <span class="ml-2 text-sm leading-tight text-gray-700">Visitor</span>
                             </label>
-                            <label class="flex items-center cursor-pointer">
+                            <label class="flex items-start cursor-pointer min-w-0">
                                 <input
                                     v-model="form.client_type"
                                     type="radio"
                                     value="senior_citizen"
                                     class="w-4 h-4 text-[#800000] border-gray-300 focus:ring-[#800000]"
                                 />
-                                <span class="ml-2 text-gray-700">Senior Citizen (Priority)</span>
+                                <span class="ml-2 text-sm leading-tight text-gray-700">Senior Citizen (Priority)</span>
                             </label>
-                            <label class="flex items-center cursor-pointer">
+                            <label class="flex items-start cursor-pointer min-w-0">
                                 <input
                                     v-model="form.client_type"
                                     type="radio"
                                     value="high_priority"
                                     class="w-4 h-4 text-[#800000] border-gray-300 focus:ring-[#800000]"
                                 />
-                                <span class="ml-2 text-gray-700">High Priority</span>
+                                <span class="ml-2 text-sm leading-tight text-gray-700">High Priority</span>
                             </label>
                         </div>
                         <div v-if="form.errors.client_type" class="text-red-500 text-sm mt-1">
@@ -174,10 +174,10 @@ usePolling(() => {
                     </div>
 
                     <!-- Submit Button -->
-                    <div class="flex justify-end">
+                    <div class="flex justify-stretch sm:justify-end">
                         <button
                             type="submit"
-                            class="bg-[#FFC107] hover:bg-[#FFB300] text-[#800000] px-6 py-3 rounded-lg font-semibold transition disabled:opacity-50"
+                            class="w-full sm:w-auto bg-[#FFC107] hover:bg-[#FFB300] text-[#800000] px-6 py-3 rounded-lg font-semibold transition disabled:opacity-50"
                             :disabled="form.processing"
                         >
                             <span v-if="form.processing">Generating...</span>
@@ -203,36 +203,58 @@ usePolling(() => {
             <div class="bg-white rounded-lg shadow-sm p-6">
                 <h2 class="text-xl font-semibold text-[#800000] mb-4">Current Waiting Queue</h2>
                 
-                <div class="overflow-x-auto">
-                    <table class="w-full">
+                <div v-if="waitingQueues.length === 0" class="text-center py-8 text-gray-500">
+                    No waiting queues
+                </div>
+
+                <div v-else class="sm:hidden space-y-3">
+                    <div
+                        v-for="queue in waitingQueues"
+                        :key="queue.id"
+                        class="rounded-lg border border-gray-200 p-3 bg-gray-50 cursor-pointer"
+                        @click="router.visit(route('frontdesk.queues.print', queue.id))"
+                    >
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <p class="text-xs text-gray-500">Queue Number</p>
+                                <p class="text-lg font-bold text-[#800000] leading-tight">{{ queue.queue_number }}</p>
+                            </div>
+                            <span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap">
+                                Waiting
+                            </span>
+                        </div>
+                        <div class="mt-2 text-sm text-gray-700">
+                            <p><span class="text-gray-500">Category:</span> {{ queue.service_category?.name || 'N/A' }}</p>
+                            <p><span class="text-gray-500">Time:</span> {{ formatTime(queue.created_at) }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="hidden sm:block overflow-x-auto">
+                    <table class="w-full min-w-[560px]">
                         <thead>
                             <tr class="border-b border-gray-200">
-                                <th class="text-left py-3 px-4 font-semibold text-gray-700">Queue Number</th>
-                                <th class="text-left py-3 px-4 font-semibold text-gray-700">Category</th>
-                                <th class="text-left py-3 px-4 font-semibold text-gray-700">Status</th>
-                                <th class="text-left py-3 px-4 font-semibold text-gray-700">Time Created</th>
+                                <th class="text-left py-3 px-3 sm:px-4 font-semibold text-gray-700">Queue Number</th>
+                                <th class="text-left py-3 px-3 sm:px-4 font-semibold text-gray-700">Category</th>
+                                <th class="text-left py-3 px-3 sm:px-4 font-semibold text-gray-700">Status</th>
+                                <th class="text-left py-3 px-3 sm:px-4 font-semibold text-gray-700">Time Created</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr v-if="waitingQueues.length === 0">
-                                <td colspan="4" class="text-center py-8 text-gray-500">
-                                    No waiting queues
-                                </td>
-                            </tr>
                             <tr
                                 v-for="queue in waitingQueues"
                                 :key="queue.id"
                                 class="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
                                 @click="router.visit(route('frontdesk.queues.print', queue.id))"
                             >
-                                <td class="py-3 px-4 font-semibold text-[#800000]">{{ queue.queue_number }}</td>
-                                <td class="py-3 px-4">{{ queue.service_category?.name || 'N/A' }}</td>
-                                <td class="py-3 px-4">
+                                <td class="py-3 px-3 sm:px-4 font-semibold text-[#800000]">{{ queue.queue_number }}</td>
+                                <td class="py-3 px-3 sm:px-4">{{ queue.service_category?.name || 'N/A' }}</td>
+                                <td class="py-3 px-3 sm:px-4">
                                     <span class="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm">
                                         Waiting
                                     </span>
                                 </td>
-                                <td class="py-3 px-4 text-gray-600">{{ formatTime(queue.created_at) }}</td>
+                                <td class="py-3 px-3 sm:px-4 text-gray-600">{{ formatTime(queue.created_at) }}</td>
                             </tr>
                         </tbody>
                     </table>

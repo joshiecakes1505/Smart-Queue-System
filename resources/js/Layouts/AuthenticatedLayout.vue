@@ -52,8 +52,8 @@ const navigationLinks = computed(() => {
         
         <!-- Maroon Top Navigation Bar -->
         <nav class="bg-[#800000] text-white shadow-sm">
-            <div class="container mx-auto px-6 py-4">
-                <div class="flex justify-between items-center">
+            <div class="container mx-auto px-4 sm:px-6 py-4">
+                <div class="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
                     <!-- System Name -->
                     <div class="flex items-center gap-3">
                         <img
@@ -61,15 +61,15 @@ const navigationLinks = computed(() => {
                             alt="School Logo"
                             class="h-11 w-11 object-contain"
                         />
-                        <div>
-                            <h1 class="text-lg font-semibold">Smart Queuing System - BEC</h1>
+                        <div class="min-w-0">
+                            <h1 class="text-base sm:text-lg font-semibold leading-tight">Smart Queuing System - BEC</h1>
                             <p class="text-xs text-yellow-200">{{ title }}</p>
                         </div>
                     </div>
 
                     <!-- User Info & Logout -->
-                    <div class="flex items-center space-x-4">
-                        <span class="text-sm">{{ $page.props.auth.user.name }}</span>
+                    <div class="flex flex-wrap items-center justify-start sm:justify-end gap-3 sm:gap-4">
+                        <span class="text-sm break-all">{{ $page.props.auth.user.name }}</span>
                         <button
                             @click="logout"
                             class="bg-yellow-500 hover:bg-yellow-600 text-[#800000] px-4 py-2 rounded-lg text-sm font-medium transition"
@@ -100,7 +100,7 @@ const navigationLinks = computed(() => {
         </nav>
 
         <!-- Main Content -->
-        <main class="container mx-auto px-6 py-8">
+        <main class="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
             <slot />
         </main>
     </div>

@@ -5,8 +5,6 @@ import { onMounted } from 'vue';
 import Swal from 'sweetalert2';
 import { Head } from '@inertiajs/vue3';
 import { connectQZTray, printQueueReceipt } from '@/Services/ReceiptPrinter';
-import { buildQueueReceipt } from '@/Services/RawBTReceiptBuilder';
-import { printViaRawBT } from '@/Services/RawBTService';
 
 const props = defineProps({
     queue: {
@@ -17,7 +15,6 @@ const props = defineProps({
 
 const qrCodeUrl = computed(() => route('qr.generate', props.queue.queue_number));
 const isPrinting = ref(false);
-const isRawBTPrinting = ref(false);
 const hasAutoPrinted = ref(false);
 
 const browserPrint = () => {
@@ -62,34 +59,6 @@ const printReceipt = async () => {
         }
     } finally {
         isPrinting.value = false;
-    }
-};
-
-const printViaTablet = async () => {
-    if (isRawBTPrinting.value) {
-        return;
-    }
-
-    isRawBTPrinting.value = true;
-
-    try {
-        const receipt = buildQueueReceipt({
-            number: props.queue.queue_number,
-            service: props.queue.service_category?.name,
-            created_at: props.queue.created_at,
-            qr_code: props.queue.queue_number,
-        });
-
-        await printViaRawBT(receipt);
-    } catch (error) {
-        console.error('[FrontDesk/PrintTicket] RawBT print failed:', error);
-        await Swal.fire({
-            icon: 'error',
-            title: 'RawBT print failed',
-            text: error?.message || 'Unable to open RawBT for printing.',
-        });
-    } finally {
-        isRawBTPrinting.value = false;
     }
 };
 
@@ -139,16 +108,16 @@ const clientTypeLabel = (type) => {
     <div class="min-h-screen bg-gray-50 py-8 px-4 print:bg-white print:py-0">
         <div class="max-w-4xl mx-auto">
             <!-- Action Buttons (hide on print) -->
-            <div class="mb-6 flex gap-4 print:hidden">
+            <div class="mb-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 print:hidden">
                 <a
                     :href="route('frontdesk.queues.index')"
-                    class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold transition"
+                    class="w-full text-center bg-gray-500 hover:bg-gray-600 text-white px-4 py-3 rounded-lg font-semibold text-sm sm:text-base leading-tight transition"
                 >
                     Back to Dashboard
                 </a>
                 <button
                     @click="printReceipt"
-                    class="bg-[#800000] hover:bg-[#660000] text-white px-6 py-3 rounded-lg font-semibold transition"
+                    class="w-full bg-[#800000] hover:bg-[#660000] text-white px-4 py-3 rounded-lg font-semibold text-sm sm:text-base leading-tight transition"
                     :disabled="isPrinting"
                 >
                     {{ isPrinting ? 'Printing...' : 'Print Receipt' }}
@@ -156,17 +125,9 @@ const clientTypeLabel = (type) => {
                 <button
                     @click="browserPrint"
                     type="button"
-                    class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition"
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-semibold text-sm sm:text-base leading-tight transition"
                 >
                     Browser Print
-                </button>
-                <button
-                    @click="printViaTablet"
-                    type="button"
-                    class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition disabled:opacity-70 disabled:cursor-not-allowed"
-                    :disabled="isRawBTPrinting"
-                >
-                    {{ isRawBTPrinting ? 'Opening RawBT...' : 'Print via Tablet (RawBT)' }}
                 </button>
             </div>
 

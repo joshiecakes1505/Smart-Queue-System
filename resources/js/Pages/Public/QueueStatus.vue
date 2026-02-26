@@ -199,13 +199,13 @@ usePolling(fetchAll, 5000)
             <div
               v-for="window in liveData.windows"
               :key="window.id"
-              class="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 flex items-center justify-between"
+              class="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between"
             >
-              <div>
-                <p class="text-sm font-semibold text-[#800000]">{{ window.name }}</p>
-                <p class="text-xs text-gray-500">{{ window.assigned_user || 'Unassigned' }}</p>
+              <div class="min-w-0 w-full sm:w-auto">
+                <p class="text-sm font-semibold text-[#800000] break-words">{{ window.name }}</p>
+                <p class="text-xs text-gray-500 break-words">{{ window.assigned_user || 'Unassigned' }}</p>
               </div>
-              <p class="text-sm font-semibold text-gray-800">{{ window.current?.queue_number || 'Idle' }}</p>
+              <p class="text-sm font-semibold text-gray-800 self-end sm:self-auto">{{ window.current?.queue_number || 'Idle' }}</p>
             </div>
           </div>
         </div>

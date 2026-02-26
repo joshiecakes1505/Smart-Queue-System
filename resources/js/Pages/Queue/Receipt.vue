@@ -3,8 +3,6 @@ import { Head } from '@inertiajs/vue3';
 import { computed, onMounted, ref } from 'vue';
 import Swal from 'sweetalert2';
 import { connectQZTray, printQueueReceipt } from '@/Services/ReceiptPrinter';
-import { buildQueueReceipt } from '@/Services/RawBTReceiptBuilder';
-import { printViaRawBT } from '@/Services/RawBTService';
 
 const props = defineProps({
     queue: {
@@ -14,7 +12,6 @@ const props = defineProps({
 });
 
 const isPrinting = ref(false);
-const isRawBTPrinting = ref(false);
 
 const normalizedQueue = computed(() => ({
     number: props.queue.number || props.queue.queue_number || 'N/A',
@@ -50,28 +47,6 @@ const onPrintReceipt = async () => {
     }
 };
 
-const onPrintViaRawBT = async () => {
-    if (isRawBTPrinting.value) {
-        return;
-    }
-
-    isRawBTPrinting.value = true;
-
-    try {
-        const receipt = buildQueueReceipt(normalizedQueue.value);
-        await printViaRawBT(receipt);
-    } catch (error) {
-        console.error('[Queue/Receipt] RawBT print failed:', error);
-        await Swal.fire({
-            icon: 'error',
-            title: 'RawBT print failed',
-            text: error?.message || 'Unable to open RawBT for printing.',
-        });
-    } finally {
-        isRawBTPrinting.value = false;
-    }
-};
-
 onMounted(async () => {
     try {
         await connectQZTray();
@@ -101,15 +76,6 @@ onMounted(async () => {
                 @click="onPrintReceipt"
             >
                 {{ isPrinting ? 'Printing...' : 'Print Receipt' }}
-            </button>
-
-            <button
-                type="button"
-                class="mt-3 w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
-                :disabled="isRawBTPrinting"
-                @click="onPrintViaRawBT"
-            >
-                {{ isRawBTPrinting ? 'Opening RawBT...' : 'Print Receipt (Tablet - RawBT)' }}
             </button>
         </div>
     </div>

@@ -60,25 +60,25 @@ onBeforeUnmount(() => {
     <Head title="Queue Display" />
     
     <!-- Maroon Header -->
-    <header class="bg-[#800000] text-white py-6">
-      <div class="container mx-auto px-8">
-        <div class="flex justify-between items-center">
+    <header class="bg-[#800000] text-white py-4 sm:py-6">
+      <div class="container mx-auto px-4 sm:px-8">
+        <div class="flex flex-col gap-4 lg:flex-row lg:justify-between lg:items-center">
           <div>
             <div class="flex items-center gap-4">
               <img
                 :src="schoolLogoUrl"
                 alt="School Logo"
-                class="h-16 w-16 object-contain"
+                class="h-12 w-12 sm:h-16 sm:w-16 object-contain"
               />
               <div>
-                <h1 class="text-4xl font-bold">Smart Queuing System</h1>
-                <p class="text-yellow-200 text-lg mt-1">Batangas Eastern Colleges</p>
+                <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight">Smart Queuing System</h1>
+                <p class="text-yellow-200 text-sm sm:text-base lg:text-lg mt-1">Batangas Eastern Colleges</p>
               </div>
             </div>
           </div>
-          <div class="text-right">
+          <div class="text-left lg:text-right">
             <p class="text-sm text-yellow-200">Current Time</p>
-            <p class="text-3xl font-bold">{{ formatTime(data.timestamp) }}</p>
+            <p class="text-2xl sm:text-3xl font-bold">{{ formatTime(data.timestamp) }}</p>
             <button
               type="button"
               class="mt-3 inline-flex items-center rounded-md border border-white px-3 py-2 text-sm font-semibold text-white hover:bg-white hover:text-[#800000]"
@@ -94,27 +94,27 @@ onBeforeUnmount(() => {
     </header>
 
     <!-- Main Content -->
-    <main class="container mx-auto px-8 py-8">
+    <main class="container mx-auto px-4 sm:px-8 py-6 sm:py-8">
       <!-- Windows Grid -->
       <div class="mb-12">
-        <h2 class="text-3xl font-bold text-[#800000] mb-6">Now Serving</h2>
+        <h2 class="text-2xl sm:text-3xl font-bold text-[#800000] mb-6">Now Serving</h2>
         
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
           <div 
             v-for="window in data.windows" 
             :key="window.id"
-            class="bg-white border-4 border-[#800000] rounded-lg p-8"
+            class="bg-white border-4 border-[#800000] rounded-lg p-5 sm:p-8"
           >
             <!-- Window Name -->
             <div class="bg-[#800000] text-white text-center py-3 rounded-lg mb-6">
-              <h3 class="text-3xl font-bold">{{ window.name }}</h3>
+              <h3 class="text-2xl sm:text-3xl font-bold">{{ window.name }}</h3>
             </div>
 
             <!-- Current Queue -->
             <div class="text-center mb-4">
               <p class="text-sm text-gray-600 mb-2">NOW SERVING</p>
-              <div class="bg-[#FFC107] rounded-lg py-8">
-                <p class="text-7xl font-bold text-[#800000]">
+              <div class="bg-[#FFC107] rounded-lg py-6 sm:py-8">
+                <p class="text-5xl sm:text-6xl lg:text-7xl font-bold text-[#800000] leading-none">
                   {{ window.current?.queue_number ?? '—' }}
                 </p>
               </div>
@@ -135,17 +135,17 @@ onBeforeUnmount(() => {
       </div>
 
       <!-- Next in Queue -->
-      <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-8">
-        <h3 class="text-2xl font-bold text-[#800000] mb-6 text-center">Next in Queue</h3>
+      <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-5 sm:p-8">
+        <h3 class="text-xl sm:text-2xl font-bold text-[#800000] mb-6 text-center">Next in Queue</h3>
         
-        <div v-if="data.next_queues.length > 0" class="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div v-if="data.next_queues.length > 0" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
           <div 
             v-for="(queue, idx) in data.next_queues" 
             :key="queue.queue_number"
-            class="bg-white border-2 border-[#800000] rounded-lg p-6 text-center"
+            class="bg-white border-2 border-[#800000] rounded-lg p-4 sm:p-6 text-center"
           >
             <p class="text-xs text-gray-500 mb-2">Position {{ idx + 1 }}</p>
-            <p class="text-4xl font-bold text-[#800000]">{{ queue.queue_number }}</p>
+            <p class="text-3xl sm:text-4xl font-bold text-[#800000] leading-tight">{{ queue.queue_number }}</p>
             <p class="text-sm text-gray-600 mt-3">{{ queue.service_category || 'N/A' }}</p>
           </div>
         </div>
@@ -158,7 +158,7 @@ onBeforeUnmount(() => {
 
     <!-- Footer -->
     <footer class="bg-gray-100 py-4 mt-12">
-      <div class="container mx-auto px-8 text-center">
+      <div class="container mx-auto px-4 sm:px-8 text-center">
         <p class="text-sm text-gray-600">Auto-refreshing every 2 seconds</p>
       </div>
     </footer>
