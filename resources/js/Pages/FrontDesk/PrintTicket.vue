@@ -1,9 +1,12 @@
 <script setup>
 import { computed } from 'vue';
 import { ref } from 'vue';
-import axios from 'axios';
+import { onMounted } from 'vue';
 import Swal from 'sweetalert2';
 import { Head } from '@inertiajs/vue3';
+import { connectQZTray, printQueueReceipt } from '@/Services/ReceiptPrinter';
+import { buildQueueReceipt } from '@/Services/RawBTReceiptBuilder';
+import { printViaRawBT } from '@/Services/RawBTService';
 
 const props = defineProps({
     queue: {
@@ -13,8 +16,9 @@ const props = defineProps({
 });
 
 const qrCodeUrl = computed(() => route('qr.generate', props.queue.queue_number));
-const printReceiptEndpoint = computed(() => route('frontdesk.queues.print-receipt', props.queue.id));
 const isPrinting = ref(false);
+const isRawBTPrinting = ref(false);
+const hasAutoPrinted = ref(false);
 
 const browserPrint = () => {
     window.print();
@@ -28,22 +32,21 @@ const printReceipt = async () => {
     isPrinting.value = true;
 
     try {
-        const response = await axios.post(printReceiptEndpoint.value);
+        await printQueueReceipt({
+            number: props.queue.queue_number,
+            service: props.queue.service_category?.name,
+            created_at: props.queue.created_at,
+            qr_code: props.queue.queue_number,
+        });
 
         await Swal.fire({
             icon: 'success',
-            title: response.data?.message || 'Receipt printed successfully',
+            title: 'Receipt printed successfully',
             timer: 1800,
             showConfirmButton: false,
         });
     } catch (error) {
-        let message = 'Unable to print receipt. Please check printer and print service.';
-
-        if (error?.response?.data?.message) {
-            message = error.response.data.message;
-        } else if (error?.code === 'ERR_NETWORK') {
-            message = 'Print service offline or network error.';
-        }
+        const message = error?.message || 'Unable to print receipt. Please check QZ Tray and printer connection.';
 
         const result = await Swal.fire({
             icon: 'error',
@@ -61,6 +64,53 @@ const printReceipt = async () => {
         isPrinting.value = false;
     }
 };
+
+const printViaTablet = async () => {
+    if (isRawBTPrinting.value) {
+        return;
+    }
+
+    isRawBTPrinting.value = true;
+
+    try {
+        const receipt = buildQueueReceipt({
+            number: props.queue.queue_number,
+            service: props.queue.service_category?.name,
+            created_at: props.queue.created_at,
+            qr_code: props.queue.queue_number,
+        });
+
+        await printViaRawBT(receipt);
+    } catch (error) {
+        console.error('[FrontDesk/PrintTicket] RawBT print failed:', error);
+        await Swal.fire({
+            icon: 'error',
+            title: 'RawBT print failed',
+            text: error?.message || 'Unable to open RawBT for printing.',
+        });
+    } finally {
+        isRawBTPrinting.value = false;
+    }
+};
+
+onMounted(async () => {
+    try {
+        await connectQZTray();
+
+        if (!hasAutoPrinted.value) {
+            hasAutoPrinted.value = true;
+            await printReceipt();
+        }
+    } catch (error) {
+        console.error('[FrontDesk/PrintTicket] QZ Tray auto-connect failed:', error);
+        await Swal.fire({
+            icon: 'warning',
+            title: 'Printer not ready',
+            text: 'QZ Tray connection failed. You can still use Browser Print or retry Print Ticket.',
+            confirmButtonText: 'OK',
+        });
+    }
+});
 
 const formatDate = (datetime) => {
     return new Date(datetime).toLocaleString('en-US', {
@@ -101,7 +151,7 @@ const clientTypeLabel = (type) => {
                     class="bg-[#800000] hover:bg-[#660000] text-white px-6 py-3 rounded-lg font-semibold transition"
                     :disabled="isPrinting"
                 >
-                    {{ isPrinting ? 'Printing...' : 'Print Ticket' }}
+                    {{ isPrinting ? 'Printing...' : 'Print Receipt' }}
                 </button>
                 <button
                     @click="browserPrint"
@@ -109,6 +159,14 @@ const clientTypeLabel = (type) => {
                     class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition"
                 >
                     Browser Print
+                </button>
+                <button
+                    @click="printViaTablet"
+                    type="button"
+                    class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition disabled:opacity-70 disabled:cursor-not-allowed"
+                    :disabled="isRawBTPrinting"
+                >
+                    {{ isRawBTPrinting ? 'Opening RawBT...' : 'Print via Tablet (RawBT)' }}
                 </button>
             </div>
 
