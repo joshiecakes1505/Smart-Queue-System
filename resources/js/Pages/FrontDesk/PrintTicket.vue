@@ -16,6 +16,13 @@ const props = defineProps({
 const qrCodeUrl = computed(() => route('qr.generate', props.queue.queue_number));
 const isPrinting = ref(false);
 const hasAutoPrinted = ref(false);
+const serviceSummary = computed(() => {
+    if (Array.isArray(props.queue.transaction_service_categories) && props.queue.transaction_service_categories.length) {
+        return props.queue.transaction_service_categories.join(', ');
+    }
+
+    return props.queue.service_category?.name || 'N/A';
+});
 
 const browserPrint = () => {
     window.print();
@@ -31,7 +38,7 @@ const printReceipt = async () => {
     try {
         await printQueueReceipt({
             number: props.queue.queue_number,
-            service: props.queue.service_category?.name,
+            service: serviceSummary.value,
             created_at: props.queue.created_at,
             qr_code: props.queue.queue_number,
         });
@@ -154,7 +161,7 @@ const clientTypeLabel = (type) => {
                         </div>
                         <div class="flex justify-between gap-3">
                             <span class="text-gray-500">Service</span>
-                            <span class="font-semibold text-right">{{ queue.service_category?.name || 'N/A' }}</span>
+                            <span class="font-semibold text-right">{{ serviceSummary }}</span>
                         </div>
                         <div class="flex justify-between gap-3">
                             <span class="text-gray-500">Time</span>

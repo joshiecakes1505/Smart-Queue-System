@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CashierWindow;
 use App\Models\Queue;
 use App\Models\QueueCounter;
+use App\Models\QueueLog;
 use App\Services\QueueService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -26,6 +27,7 @@ class PublicQueueController extends Controller
             ->get()
             ->map(function ($w) {
                 $current = Queue::where('cashier_window_id', $w->id)
+                    ->with('serviceCategory')
                     ->where('status', Queue::STATUS_CALLED)
                     ->orderBy('start_time', 'desc')
                     ->first();
@@ -37,7 +39,9 @@ class PublicQueueController extends Controller
                     'current' => $current ? [
                         'queue_number' => $current->queue_number,
                         'client_name' => $current->client_name,
+                        'client_type' => $current->client_type,
                         'service_category' => $current->serviceCategory->name ?? null,
+                        'transaction_service_categories' => $current->transaction_service_categories,
                     ] : null,
                 ];
             });
@@ -54,6 +58,7 @@ class PublicQueueController extends Controller
                     'client_name' => $q->client_name,
                     'client_type' => $q->client_type,
                     'service_category' => $q->serviceCategory->name ?? null,
+                    'transaction_service_categories' => $q->transaction_service_categories,
                 ];
             });
 
@@ -116,6 +121,7 @@ class PublicQueueController extends Controller
             'client_type' => $queue->client_type,
             'is_priority' => $queue->isPriorityClientType(),
             'service_category' => $queue->serviceCategory->name ?? null,
+            'transaction_service_categories' => $queue->transaction_service_categories,
             'position' => $position,
             'waiting_ahead' => $waitingAhead,
             'active_called_ahead' => $activeCalledAhead,
@@ -125,6 +131,47 @@ class PublicQueueController extends Controller
             'created_at' => $queue->created_at?->toIso8601String(),
             'start_time' => $queue->start_time?->toIso8601String(),
             'cashier_window' => $queue->cashierWindow?->name,
+        ]);
+    }
+
+    public function cancelQueue(Request $request, string $queue_number)
+    {
+        $queue = Queue::query()->where('queue_number', $queue_number)->first();
+
+        if (!$queue) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Queue not found.',
+            ], 404);
+        }
+
+        if ($queue->status !== Queue::STATUS_WAITING) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Only waiting queues can be cancelled.',
+            ], 422);
+        }
+
+        $queue->status = Queue::STATUS_SKIPPED;
+        $queue->cashier_window_id = null;
+        $queue->start_time = null;
+        $queue->end_time = now();
+        $queue->is_reinstated = true;
+        $queue->save();
+
+        QueueLog::query()->create([
+            'queue_id' => $queue->id,
+            'action' => 'skipped',
+            'performed_by' => null,
+            'meta' => [
+                'source' => 'public_mobile',
+                'reason' => 'client_cancelled',
+            ],
+        ]);
+
+        return response()->json([
+            'ok' => true,
+            'message' => 'Queue cancelled successfully.',
         ]);
     }
 

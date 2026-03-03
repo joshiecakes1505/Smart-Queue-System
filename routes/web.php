@@ -86,6 +86,7 @@ Route::get('/public/queue/{queue_number}', function (string $queue_number) {
     return redirect()->route('public.queue.show', ['queue_number' => $queue_number], 301);
 })->name('public.queue.legacy');
 Route::get('/api/queue/{queue_number}/status', [PublicQueueController::class, 'getQueueData'])->name('api.queue.status');
+Route::post('/api/queue/{queue_number}/cancel', [PublicQueueController::class, 'cancelQueue'])->name('api.queue.cancel');
 
 // Display
 Route::get('/display', [DisplayController::class, 'index'])->name('display.index');

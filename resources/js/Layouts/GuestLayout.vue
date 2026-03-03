@@ -7,7 +7,7 @@ const schoolLogoUrl = document.querySelector('meta[name="app-logo-url"]')?.getAt
 
 <template>
     <div
-        class="flex min-h-screen flex-col items-center bg-gray-100 pt-6 sm:justify-center sm:pt-0"
+        class="flex min-h-screen flex-col items-center justify-center bg-gray-100 px-4 py-6 sm:px-6 sm:py-8"
     >
         <div>
             <Link href="/">
@@ -20,7 +20,7 @@ const schoolLogoUrl = document.querySelector('meta[name="app-logo-url"]')?.getAt
         </div>
 
         <div
-            class="mt-6 w-full overflow-hidden bg-white px-6 py-4 shadow-md sm:max-w-md sm:rounded-lg"
+            class="mt-6 w-full max-w-md overflow-hidden bg-white px-5 py-4 shadow-md sm:rounded-lg sm:px-6"
         >
             <slot />
         </div>

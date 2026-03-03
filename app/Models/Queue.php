@@ -48,6 +48,11 @@ class Queue extends Model
         'end_time' => 'datetime',
     ];
 
+    protected $appends = [
+        'transaction_service_categories',
+        'has_multiple_transactions',
+    ];
+
     public function serviceCategory(): BelongsTo
     {
         return $this->belongsTo(ServiceCategory::class);
@@ -66,5 +71,39 @@ class Queue extends Model
     public function isPriorityClientType(): bool
     {
         return in_array($this->client_type, self::PRIORITY_CLIENT_TYPES, true);
+    }
+
+    public function getTransactionServiceCategoriesAttribute(): array
+    {
+        $decoded = is_string($this->note) ? json_decode($this->note, true) : null;
+
+        if (is_array($decoded) && isset($decoded['service_category_names']) && is_array($decoded['service_category_names'])) {
+            $names = collect($decoded['service_category_names'])
+                ->filter(fn ($name) => is_string($name) && trim($name) !== '')
+                ->values()
+                ->all();
+
+            if (!empty($names)) {
+                return $names;
+            }
+        }
+
+        if ($this->relationLoaded('serviceCategory') && $this->serviceCategory?->name) {
+            return [$this->serviceCategory->name];
+        }
+
+        if ($this->service_category_id) {
+            $name = $this->serviceCategory()->value('name');
+            if ($name) {
+                return [$name];
+            }
+        }
+
+        return [];
+    }
+
+    public function getHasMultipleTransactionsAttribute(): bool
+    {
+        return count($this->transaction_service_categories) > 1;
     }
 }

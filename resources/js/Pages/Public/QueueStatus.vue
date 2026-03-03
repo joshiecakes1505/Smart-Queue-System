@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, inject, ref } from 'vue'
 import { usePolling } from '@/Composables/usePolling'
 
 const props = defineProps({ queue_number: String })
@@ -8,6 +8,8 @@ const queueData = ref(null)
 const liveData = ref({ windows: [] })
 const loading = ref(true)
 const error = ref(null)
+const cancelling = ref(false)
+const swal = inject('$swal')
 
 const nowServingQueues = computed(() => {
   return (liveData.value?.windows || [])
@@ -16,6 +18,8 @@ const nowServingQueues = computed(() => {
       windowName: window.name,
       queueNumber: window.current.queue_number,
       serviceCategory: window.current.service_category,
+      clientType: window.current.client_type,
+      transactionServiceCategories: window.current.transaction_service_categories,
     }))
 })
 
@@ -109,16 +113,97 @@ const fetchAll = async () => {
   loading.value = false
 }
 
+const queueTheme = (clientType) => {
+  if (clientType === 'senior_citizen' || clientType === 'high_priority') {
+    return {
+      numberText: 'text-blue-700',
+      calledBg: 'bg-blue-700',
+    }
+  }
+
+  if (clientType === 'visitor' || clientType === 'parent') {
+    return {
+      numberText: 'text-orange-600',
+      calledBg: 'bg-orange-500',
+    }
+  }
+
+  return {
+    numberText: 'text-[#800000]',
+    calledBg: 'bg-[#800000]',
+  }
+}
+
+const serviceCategoryLabel = (item) => {
+  if (Array.isArray(item?.transactionServiceCategories) && item.transactionServiceCategories.length) {
+    return item.transactionServiceCategories.join(', ')
+  }
+
+  if (Array.isArray(item?.transaction_service_categories) && item.transaction_service_categories.length) {
+    return item.transaction_service_categories.join(', ')
+  }
+
+  return item?.serviceCategory || item?.service_category || 'General Service'
+}
+
+const cancelQueue = async () => {
+  if (!queueData.value || queueData.value.status !== 'waiting' || cancelling.value) return
+
+  const firstConfirm = await swal?.fire({
+    icon: 'warning',
+    title: 'Cancel your queue?',
+    text: 'You are about to cancel this queue number.',
+    showCancelButton: true,
+    confirmButtonText: 'Continue',
+    cancelButtonText: 'Keep Queue',
+  })
+  if (!firstConfirm?.isConfirmed) return
+
+  const secondConfirm = await swal?.fire({
+    icon: 'question',
+    title: 'Confirm cancellation',
+    text: 'This action cannot be undone.',
+    showCancelButton: true,
+    confirmButtonText: 'Yes, cancel queue',
+    cancelButtonText: 'Back',
+    confirmButtonColor: '#dc2626',
+  })
+  if (!secondConfirm?.isConfirmed) return
+
+  cancelling.value = true
+
+  try {
+    await window.axios.post(window.route('api.queue.cancel', { queue_number: props.queue_number }))
+    await fetchAll()
+    await swal?.fire({
+      icon: 'success',
+      title: 'Queue cancelled',
+      text: 'Your queue has been cancelled successfully.',
+      timer: 1800,
+      showConfirmButton: false,
+    })
+  } catch (requestError) {
+    const message = requestError?.response?.data?.message || 'Unable to cancel queue right now.'
+    await swal?.fire({
+      icon: 'error',
+      title: 'Cancellation failed',
+      text: message,
+    })
+  } finally {
+    cancelling.value = false
+  }
+}
+
 usePolling(fetchAll, 5000)
 </script>
 
 <template>
-  <div class="min-h-screen bg-[#f7f5f3] py-4 px-3 sm:px-4">
+  <div class="min-h-screen bg-white py-4 px-3 sm:px-4">
     <div class="max-w-md mx-auto space-y-4">
-      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 text-center">
-        <p class="text-xs uppercase tracking-wide text-gray-500">Batangas Eastern Colleges</p>
-        <h1 class="text-lg font-semibold text-[#800000]">Queue Status Tracker</h1>
-        <p class="text-xs text-gray-500 mt-1">Live updates every 5 seconds</p>
+      <div class="bg-[#800000] rounded-xl shadow-sm border border-[#800000] p-4 text-center text-white">
+        <p class="text-xs uppercase tracking-wide text-yellow-200">Batangas Eastern Colleges</p>
+        <h1 class="text-lg font-semibold">Queue Status Tracker</h1>
+        <p class="text-xs text-yellow-100 mt-1">Live updates every 5 seconds</p>
       </div>
 
       <div v-if="loading && !queueData && !error" class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 text-center text-gray-500">
@@ -131,22 +216,30 @@ usePolling(fetchAll, 5000)
       </div>
 
       <template v-else>
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+        <div class="bg-white rounded-xl shadow-sm border border-[#e8d7d7] p-4">
           <p class="text-xs uppercase tracking-wide text-gray-500 mb-2">Now Serving</p>
-          <div v-if="firstNowServing" class="bg-[#800000] text-white rounded-lg p-4 text-center">
+          <div v-if="firstNowServing" class="text-white rounded-lg p-4 text-center" :class="queueTheme(firstNowServing.clientType).calledBg">
             <p class="text-xs mb-1">{{ firstNowServing.windowName }}</p>
-            <p class="text-4xl font-bold leading-none">{{ firstNowServing.queueNumber }}</p>
-            <p class="text-xs mt-2 text-[#ffe8a3]">{{ firstNowServing.serviceCategory || 'General Service' }}</p>
+            <p class="text-4xl font-bold leading-none text-white">{{ firstNowServing.queueNumber }}</p>
+            <p class="text-xs mt-2 text-yellow-100">{{ serviceCategoryLabel(firstNowServing) }}</p>
           </div>
           <div v-else class="bg-gray-50 rounded-lg p-4 text-center text-gray-500 text-sm">
             No active queue being served right now.
           </div>
         </div>
 
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+        <div class="bg-white rounded-xl shadow-sm border border-[#e8d7d7] p-4">
           <p class="text-xs uppercase tracking-wide text-gray-500">Your Queue Number</p>
-          <div class="mt-2 bg-[#fff4cc] border border-[#FFC107] rounded-lg p-4 text-center">
-            <p class="text-5xl font-bold text-[#800000] leading-none">
+          <div
+            class="mt-2 rounded-lg p-4 text-center"
+            :class="queueData?.status === 'called'
+              ? `${queueTheme(queueData?.client_type).calledBg} border border-transparent`
+              : 'bg-[#fff4cc] border border-[#FFC107]'"
+          >
+            <p
+              class="text-5xl font-bold leading-none"
+              :class="queueData?.status === 'called' ? 'text-white' : queueTheme(queueData?.client_type).numberText"
+            >
               {{ queueData?.queue_number || queue_number }}
             </p>
           </div>
@@ -188,12 +281,12 @@ usePolling(fetchAll, 5000)
             </div>
             <div class="bg-gray-50 rounded-lg px-3 py-2 col-span-2">
               <p class="text-gray-500 text-xs">Service Category</p>
-              <p class="font-semibold text-gray-800">{{ queueData?.service_category || 'General Service' }}</p>
+              <p class="font-semibold text-gray-800">{{ serviceCategoryLabel(queueData) }}</p>
             </div>
           </div>
         </div>
 
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+        <div class="bg-white rounded-xl shadow-sm border border-[#e8d7d7] p-4">
           <p class="text-xs uppercase tracking-wide text-gray-500 mb-3">All Windows</p>
           <div class="space-y-2">
             <div
@@ -205,9 +298,26 @@ usePolling(fetchAll, 5000)
                 <p class="text-sm font-semibold text-[#800000] break-words">{{ window.name }}</p>
                 <p class="text-xs text-gray-500 break-words">{{ window.assigned_user || 'Unassigned' }}</p>
               </div>
-              <p class="text-sm font-semibold text-gray-800 self-end sm:self-auto">{{ window.current?.queue_number || 'Idle' }}</p>
+              <p
+                class="text-sm font-semibold self-end sm:self-auto px-2 py-1 rounded"
+                :class="window.current ? `${queueTheme(window.current?.client_type).calledBg} text-white` : 'text-gray-800'"
+              >
+                {{ window.current?.queue_number || 'Idle' }}
+              </p>
             </div>
           </div>
+        </div>
+
+        <div class="pt-1">
+          <button
+            v-if="queueData?.status === 'waiting'"
+            type="button"
+            class="w-full rounded-lg border-2 border-red-300 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 transition hover:bg-red-100 disabled:opacity-50"
+            :disabled="cancelling"
+            @click="cancelQueue"
+          >
+            {{ cancelling ? 'Cancelling...' : 'Cancel Queue' }}
+          </button>
         </div>
       </template>
     </div>
