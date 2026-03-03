@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'print_service' => [
+        'url' => env('PRINT_SERVICE_URL', 'http://127.0.0.1:9123'),
+        'timeout' => env('PRINT_SERVICE_TIMEOUT', 5),
+    ],
+
 ];

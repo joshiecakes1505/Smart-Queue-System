@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "checkJs": false,
+    "module": "commonjs",
+    "target": "es2020"
+  },
+  "include": ["server.js"],
+  "exclude": ["node_modules"]
+}

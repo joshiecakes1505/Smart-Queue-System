@@ -64,6 +64,11 @@ Route::middleware(['auth:frontdesk', 'role:frontdesk'])->prefix('frontdesk')->na
     Route::get('queues/{queue}/print', [FrontDeskQueueController::class, 'print'])->name('queues.print');
 });
 
+Route::middleware(['auth:frontdesk', 'role:frontdesk'])->group(function () {
+    Route::post('/queues/{queue}/print', [FrontDeskQueueController::class, 'printReceipt'])
+        ->name('frontdesk.queues.print-receipt');
+});
+
 // Cashier routes
 Route::middleware(['auth:cashier', 'role:cashier'])->prefix('cashier')->name('cashier.')->group(function () {
     Route::get('/', [CashierController::class, 'index'])->name('index');
@@ -76,8 +81,12 @@ Route::middleware(['auth:cashier', 'role:cashier'])->prefix('cashier')->name('ca
 
 // Public endpoints
 Route::get('/public/live', [PublicQueueController::class, 'liveView'])->name('public.live');
-Route::get('/public/queue/{queue_number}', [PublicQueueController::class, 'showQueueByNumber'])->name('public.queue.show');
+Route::get('/queue/{queue_number}', [PublicQueueController::class, 'showQueueByNumber'])->name('public.queue.show');
+Route::get('/public/queue/{queue_number}', function (string $queue_number) {
+    return redirect()->route('public.queue.show', ['queue_number' => $queue_number], 301);
+})->name('public.queue.legacy');
 Route::get('/api/queue/{queue_number}/status', [PublicQueueController::class, 'getQueueData'])->name('api.queue.status');
+Route::post('/api/queue/{queue_number}/cancel', [PublicQueueController::class, 'cancelQueue'])->name('api.queue.cancel');
 
 // Display
 Route::get('/display', [DisplayController::class, 'index'])->name('display.index');

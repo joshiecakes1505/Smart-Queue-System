@@ -29,14 +29,27 @@ const queueNumber = computed(() => page.props.flash?.queueNumber || null);
 const form = useForm({
     client_name: '',
     service_category_id: '',
+    service_category_ids: [],
+    has_multiple_transactions: false,
     client_type: 'student',
 });
 
 const submit = () => {
+    if (form.has_multiple_transactions) {
+        form.service_category_id = '';
+        if (!form.service_category_ids.length) {
+            form.setError('service_category_ids', 'Select at least one service category.');
+            return;
+        }
+    } else {
+        form.service_category_ids = [];
+    }
+
     form.post(route('frontdesk.queues.store'), {
         preserveScroll: true,
         onSuccess: () => {
-            form.reset();
+            form.reset('client_name', 'service_category_id', 'service_category_ids', 'client_type', 'has_multiple_transactions');
+            form.client_type = 'student';
         },
     });
 };
@@ -46,6 +59,26 @@ const formatTime = (datetime) => {
         hour: '2-digit',
         minute: '2-digit',
     });
+};
+
+const queueNumberClass = (clientType) => {
+    if (clientType === 'senior_citizen' || clientType === 'high_priority') return 'text-blue-700';
+    if (clientType === 'visitor' || clientType === 'parent') return 'text-orange-600';
+    return 'text-[#800000]';
+};
+
+const queueChipClass = (clientType) => {
+    if (clientType === 'senior_citizen' || clientType === 'high_priority') return 'bg-blue-100 text-blue-800';
+    if (clientType === 'visitor' || clientType === 'parent') return 'bg-orange-100 text-orange-800';
+    return 'bg-[#fdf2f2] text-[#800000]';
+};
+
+const serviceCategoryLabel = (queue) => {
+    if (Array.isArray(queue.transaction_service_categories) && queue.transaction_service_categories.length) {
+        return queue.transaction_service_categories.join(', ');
+    }
+
+    return queue.service_category?.name || 'N/A';
 };
 
 usePolling(() => {
@@ -60,7 +93,7 @@ usePolling(() => {
 <template>
     <AuthenticatedLayout title="Front Desk Dashboard">
         <!-- Debug Info -->
-        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 overflow-x-auto">
             <p class="text-sm">Categories: {{ serviceCategories?.length || 0 }}</p>
             <p class="text-sm">Waiting Queues: {{ waitingQueues?.length || 0 }}</p>
         </div>
@@ -100,7 +133,17 @@ usePolling(() => {
                             <label class="block text-sm font-medium text-gray-700 mb-2">
                                 Service Category <span class="text-red-500">*</span>
                             </label>
+                            <label class="flex items-center gap-2 mb-3 cursor-pointer">
+                                <input
+                                    v-model="form.has_multiple_transactions"
+                                    type="checkbox"
+                                    class="rounded border-gray-300 text-[#800000] focus:ring-[#800000]"
+                                />
+                                <span class="text-sm text-gray-700">Client has multiple transactions</span>
+                            </label>
+
                             <select
+                                v-if="!form.has_multiple_transactions"
                                 v-model="form.service_category_id"
                                 class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#800000]"
                                 required
@@ -110,8 +153,28 @@ usePolling(() => {
                                     {{ category.name }}
                                 </option>
                             </select>
+
+                            <div v-else class="rounded-lg border border-gray-200 bg-gray-50 p-3 space-y-2 max-h-48 overflow-y-auto">
+                                <label
+                                    v-for="category in serviceCategories"
+                                    :key="`multi-${category.id}`"
+                                    class="flex items-center gap-2 cursor-pointer"
+                                >
+                                    <input
+                                        v-model="form.service_category_ids"
+                                        type="checkbox"
+                                        :value="category.id"
+                                        class="rounded border-gray-300 text-[#800000] focus:ring-[#800000]"
+                                    />
+                                    <span class="text-sm text-gray-700">{{ category.name }}</span>
+                                </label>
+                            </div>
+
                             <div v-if="form.errors.service_category_id" class="text-red-500 text-sm mt-1">
                                 {{ form.errors.service_category_id }}
+                            </div>
+                            <div v-if="form.errors.service_category_ids" class="text-red-500 text-sm mt-1">
+                                {{ form.errors.service_category_ids }}
                             </div>
                         </div>
                     </div>
@@ -121,51 +184,51 @@ usePolling(() => {
                         <label class="block text-sm font-medium text-gray-700 mb-2">
                             Client Type <span class="text-red-500">*</span>
                         </label>
-                        <div class="flex gap-6">
-                            <label class="flex items-center cursor-pointer">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            <label class="flex items-start cursor-pointer min-w-0">
                                 <input
                                     v-model="form.client_type"
                                     type="radio"
                                     value="student"
                                     class="w-4 h-4 text-[#800000] border-gray-300 focus:ring-[#800000]"
                                 />
-                                <span class="ml-2 text-gray-700">Student</span>
+                                <span class="ml-2 text-sm leading-tight text-gray-700">Student</span>
                             </label>
-                            <label class="flex items-center cursor-pointer">
+                            <label class="flex items-start cursor-pointer min-w-0">
                                 <input
                                     v-model="form.client_type"
                                     type="radio"
                                     value="parent"
                                     class="w-4 h-4 text-[#800000] border-gray-300 focus:ring-[#800000]"
                                 />
-                                <span class="ml-2 text-gray-700">Parent</span>
+                                <span class="ml-2 text-sm leading-tight text-gray-700">Parent</span>
                             </label>
-                            <label class="flex items-center cursor-pointer">
+                            <label class="flex items-start cursor-pointer min-w-0">
                                 <input
                                     v-model="form.client_type"
                                     type="radio"
                                     value="visitor"
                                     class="w-4 h-4 text-[#800000] border-gray-300 focus:ring-[#800000]"
                                 />
-                                <span class="ml-2 text-gray-700">Visitor</span>
+                                <span class="ml-2 text-sm leading-tight text-gray-700">Visitor</span>
                             </label>
-                            <label class="flex items-center cursor-pointer">
+                            <label class="flex items-start cursor-pointer min-w-0">
                                 <input
                                     v-model="form.client_type"
                                     type="radio"
                                     value="senior_citizen"
                                     class="w-4 h-4 text-[#800000] border-gray-300 focus:ring-[#800000]"
                                 />
-                                <span class="ml-2 text-gray-700">Senior Citizen (Priority)</span>
+                                <span class="ml-2 text-sm leading-tight text-gray-700">Senior Citizen (Priority)</span>
                             </label>
-                            <label class="flex items-center cursor-pointer">
+                            <label class="flex items-start cursor-pointer min-w-0">
                                 <input
                                     v-model="form.client_type"
                                     type="radio"
                                     value="high_priority"
                                     class="w-4 h-4 text-[#800000] border-gray-300 focus:ring-[#800000]"
                                 />
-                                <span class="ml-2 text-gray-700">High Priority</span>
+                                <span class="ml-2 text-sm leading-tight text-gray-700">High Priority</span>
                             </label>
                         </div>
                         <div v-if="form.errors.client_type" class="text-red-500 text-sm mt-1">
@@ -174,10 +237,10 @@ usePolling(() => {
                     </div>
 
                     <!-- Submit Button -->
-                    <div class="flex justify-end">
+                    <div class="flex justify-stretch sm:justify-end">
                         <button
                             type="submit"
-                            class="bg-[#FFC107] hover:bg-[#FFB300] text-[#800000] px-6 py-3 rounded-lg font-semibold transition disabled:opacity-50"
+                            class="w-full sm:w-auto bg-[#FFC107] hover:bg-[#FFB300] text-[#800000] px-6 py-3 rounded-lg font-semibold transition disabled:opacity-50"
                             :disabled="form.processing"
                         >
                             <span v-if="form.processing">Generating...</span>
@@ -203,35 +266,58 @@ usePolling(() => {
             <div class="bg-white rounded-lg shadow-sm p-6">
                 <h2 class="text-xl font-semibold text-[#800000] mb-4">Current Waiting Queue</h2>
                 
-                <div class="overflow-x-auto">
-                    <table class="w-full">
+                <div v-if="waitingQueues.length === 0" class="text-center py-8 text-gray-500">
+                    No waiting queues
+                </div>
+
+                <div v-else class="sm:hidden space-y-3">
+                    <div
+                        v-for="queue in waitingQueues"
+                        :key="queue.id"
+                        class="rounded-lg border border-gray-200 p-3 bg-gray-50 cursor-pointer"
+                        @click="router.visit(route('frontdesk.queues.print', queue.id))"
+                    >
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <p class="text-xs text-gray-500">Queue Number</p>
+                                <p class="text-lg font-bold leading-tight" :class="queueNumberClass(queue.client_type)">{{ queue.queue_number }}</p>
+                            </div>
+                            <span class="px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap" :class="queueChipClass(queue.client_type)">
+                                Waiting
+                            </span>
+                        </div>
+                        <div class="mt-2 text-sm text-gray-700">
+                            <p><span class="text-gray-500">Category:</span> {{ serviceCategoryLabel(queue) }}</p>
+                            <p><span class="text-gray-500">Time:</span> {{ formatTime(queue.created_at) }}</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="hidden sm:block overflow-x-auto">
+                    <table class="w-full min-w-[560px]">
                         <thead>
                             <tr class="border-b border-gray-200">
-                                <th class="text-left py-3 px-4 font-semibold text-gray-700">Queue Number</th>
-                                <th class="text-left py-3 px-4 font-semibold text-gray-700">Category</th>
-                                <th class="text-left py-3 px-4 font-semibold text-gray-700">Status</th>
-                                <th class="text-left py-3 px-4 font-semibold text-gray-700">Time Created</th>
+                                <th class="text-left py-3 px-3 sm:px-4 font-semibold text-gray-700">Queue Number</th>
+                                <th class="text-left py-3 px-3 sm:px-4 font-semibold text-gray-700">Category</th>
+                                <th class="text-left py-3 px-3 sm:px-4 font-semibold text-gray-700">Status</th>
+                                <th class="text-left py-3 px-3 sm:px-4 font-semibold text-gray-700">Time Created</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr v-if="waitingQueues.length === 0">
-                                <td colspan="4" class="text-center py-8 text-gray-500">
-                                    No waiting queues
-                                </td>
-                            </tr>
                             <tr
                                 v-for="queue in waitingQueues"
                                 :key="queue.id"
-                                class="border-b border-gray-100 hover:bg-gray-50"
+                                class="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+                                @click="router.visit(route('frontdesk.queues.print', queue.id))"
                             >
-                                <td class="py-3 px-4 font-semibold text-[#800000]">{{ queue.queue_number }}</td>
-                                <td class="py-3 px-4">{{ queue.service_category?.name || 'N/A' }}</td>
-                                <td class="py-3 px-4">
-                                    <span class="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm">
+                                <td class="py-3 px-3 sm:px-4 font-semibold" :class="queueNumberClass(queue.client_type)">{{ queue.queue_number }}</td>
+                                <td class="py-3 px-3 sm:px-4">{{ serviceCategoryLabel(queue) }}</td>
+                                <td class="py-3 px-3 sm:px-4">
+                                    <span class="px-3 py-1 rounded-full text-sm" :class="queueChipClass(queue.client_type)">
                                         Waiting
                                     </span>
                                 </td>
-                                <td class="py-3 px-4 text-gray-600">{{ formatTime(queue.created_at) }}</td>
+                                <td class="py-3 px-3 sm:px-4 text-gray-600">{{ formatTime(queue.created_at) }}</td>
                             </tr>
                         </tbody>
                     </table>

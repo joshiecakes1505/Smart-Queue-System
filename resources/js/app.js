@@ -2,6 +2,13 @@ import '../css/app.css';
 import './bootstrap';
 import 'sweetalert2/dist/sweetalert2.min.css';
 
+if (typeof window !== 'undefined' && !window.qzReady) {
+    const script = document.createElement('script');
+    script.src = '/js/qz-tray.js';
+    script.defer = true;
+    document.head.appendChild(script);
+}
+
 import { createInertiaApp } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createApp, h } from 'vue';

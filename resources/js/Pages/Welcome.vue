@@ -31,7 +31,7 @@ const submit = () => {
 
 <template>
     <Head title="Login - Smart Queuing System" />
-    <div class="min-h-screen bg-white">
+    <div class="min-h-screen bg-white flex flex-col">
         <!-- Maroon Header -->
         <header class="bg-[#800000] text-white py-6">
             <div class="container mx-auto px-6 text-center">
@@ -41,7 +41,7 @@ const submit = () => {
         </header>
 
         <!-- Login Card Container -->
-        <div class="flex items-center justify-center py-12 px-4">
+        <div class="flex-1 flex items-center justify-center py-8 sm:py-12 px-4">
             <div class="w-full max-w-md">
                 <!-- Login Card -->
                 <div class="bg-white border-2 border-gray-200 rounded-lg shadow-sm p-8">
@@ -152,7 +152,7 @@ const submit = () => {
         </div>
 
         <!-- Footer -->
-        <footer class="bg-gray-50 border-t border-gray-200 py-4 absolute bottom-0 w-full">
+        <footer class="bg-gray-50 border-t border-gray-200 py-4 mt-auto">
             <div class="container mx-auto px-6 text-center">
                 <p class="text-sm text-gray-600">© 2026 Batangas Eastern Colleges</p>
             </div>

@@ -22,6 +22,7 @@ class DisplayController extends Controller
             ->get()
             ->map(function ($window) {
                 $current = Queue::where('cashier_window_id', $window->id)
+                    ->with('serviceCategory')
                     ->where('status', Queue::STATUS_CALLED)
                     ->orderBy('start_time', 'desc')
                     ->first();
@@ -33,7 +34,9 @@ class DisplayController extends Controller
                     'current' => $current ? [
                         'queue_number' => $current->queue_number,
                         'client_name' => $current->client_name,
+                        'client_type' => $current->client_type,
                         'service_category' => $current->serviceCategory->name ?? null,
+                        'transaction_service_categories' => $current->transaction_service_categories,
                     ] : null,
                 ];
             });
@@ -50,6 +53,7 @@ class DisplayController extends Controller
                     'client_name' => $q->client_name,
                     'client_type' => $q->client_type,
                     'service_category' => $q->serviceCategory->name ?? null,
+                    'transaction_service_categories' => $q->transaction_service_categories,
                 ];
             });
 

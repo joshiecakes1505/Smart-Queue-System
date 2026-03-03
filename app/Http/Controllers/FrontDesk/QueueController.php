@@ -5,8 +5,10 @@ namespace App\Http\Controllers\FrontDesk;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreQueueRequest;
 use App\Models\Queue;
+use App\Services\PrintService;
 use App\Models\ServiceCategory;
 use App\Services\QueueService;
+use Illuminate\Http\JsonResponse;
 use Inertia\Inertia;
 
 class QueueController extends Controller
@@ -51,9 +53,52 @@ class QueueController extends Controller
 
     public function store(StoreQueueRequest $request)
     {
-        $queue = $this->queueService->createQueue($request->validated());
-        
-        return redirect()->route('frontdesk.queues.print', $queue);
+        $validated = $request->validated();
+
+        $serviceCategoryIds = collect($validated['service_category_ids'] ?? [])
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        if ($serviceCategoryIds->isEmpty() && !empty($validated['service_category_id'])) {
+            $serviceCategoryIds = collect([(int) $validated['service_category_id']]);
+        }
+
+        if ($serviceCategoryIds->isEmpty()) {
+            return back()->withErrors([
+                'service_category_id' => 'Please select at least one service category.',
+            ]);
+        }
+
+        $categoriesById = ServiceCategory::query()
+            ->whereIn('id', $serviceCategoryIds->all())
+            ->get(['id', 'name'])
+            ->keyBy('id');
+
+        $selectedCategoryNames = $serviceCategoryIds
+            ->map(fn (int $id) => $categoriesById->get($id)?->name)
+            ->filter()
+            ->values()
+            ->all();
+
+        $primaryServiceCategoryId = (int) $serviceCategoryIds->first();
+
+        $queue = $this->queueService->createQueue([
+            ...$validated,
+            'service_category_id' => $primaryServiceCategoryId,
+            'note' => json_encode([
+                'service_category_ids' => $serviceCategoryIds->all(),
+                'service_category_names' => $selectedCategoryNames,
+                'note' => $validated['note'] ?? null,
+            ]),
+        ]);
+
+        return redirect()
+            ->route('frontdesk.queues.print', $queue)
+            ->with([
+                'queueNumber' => $queue->queue_number,
+            ]);
     }
 
     public function print(\App\Models\Queue $queue)
@@ -62,6 +107,24 @@ class QueueController extends Controller
         
         return Inertia::render('FrontDesk/PrintTicket', [
             'queue' => $queue,
+        ]);
+    }
+
+    public function printReceipt(Queue $queue, PrintService $printService): JsonResponse
+    {
+        $result = $printService->printQueueReceipt($queue);
+
+        if (! $result['ok']) {
+            return response()->json([
+                'ok' => false,
+                'message' => $result['message'],
+                'error' => $result['error'] ?? null,
+            ], $result['status'] ?? 500);
+        }
+
+        return response()->json([
+            'ok' => true,
+            'message' => $result['message'] ?? 'Receipt printed successfully',
         ]);
     }
 }
