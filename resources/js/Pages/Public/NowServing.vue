@@ -1,23 +1,108 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { usePolling } from '@/Composables/usePolling'
+import {
+  announceQueue,
+  getLastAnnouncedQueues,
+  setLastAnnouncedQueues,
+} from '@/Services/QueueAnnouncement'
 
 const liveData = ref({ windows: [], next: [] })
+const hasAnnouncementBaseline = ref(false)
+const lastAnnouncedByWindow = ref({})
+
+const ANNOUNCEMENT_STORAGE_KEY = 'public-now-serving:last-announced'
 
 const nowServing = computed(() => liveData.value.windows || [])
 const nextQueues = computed(() => liveData.value.next || [])
+
+const getWindowAnnouncementKey = (windowData) => {
+  if (windowData?.id) return `${windowData.id}`
+  if (windowData?.name) return windowData.name
+  return ''
+}
+
+const getWindowAnnouncementLabel = (windowData) => {
+  const rawValue = windowData?.window_number || windowData?.name || (windowData?.id ? `${windowData.id}` : '')
+  if (!rawValue) return ''
+
+  return `${rawValue}`.replace(/^(window|counter)\s*/i, '').trim()
+    || `${rawValue}`.trim()
+}
+
+const buildCurrentQueueMap = (windows = []) => {
+  return windows.reduce((queueMap, windowData) => {
+    const key = getWindowAnnouncementKey(windowData)
+    const queueNumber = windowData?.current?.queue_number
+    const updatedAt = windowData?.current?.updated_at
+    const announcementToken = updatedAt ? `${queueNumber}|${updatedAt}` : queueNumber
+
+    if (key && queueNumber && announcementToken) {
+      queueMap[key] = announcementToken
+    }
+
+    return queueMap
+  }, {})
+}
+
+const initializeAnnouncementBaseline = (windows = []) => {
+  if (hasAnnouncementBaseline.value) return
+
+  const persistedMap = getLastAnnouncedQueues(ANNOUNCEMENT_STORAGE_KEY)
+
+  if (Object.keys(persistedMap).length) {
+    lastAnnouncedByWindow.value = persistedMap
+  } else {
+    const currentMap = buildCurrentQueueMap(windows)
+    lastAnnouncedByWindow.value = currentMap
+    setLastAnnouncedQueues(currentMap, ANNOUNCEMENT_STORAGE_KEY)
+  }
+
+  hasAnnouncementBaseline.value = true
+}
+
+const announceQueueUpdates = (windows = []) => {
+  initializeAnnouncementBaseline(windows)
+
+  let hasChanges = false
+  const nextAnnouncedMap = { ...lastAnnouncedByWindow.value }
+
+  windows.forEach((windowData) => {
+    const key = getWindowAnnouncementKey(windowData)
+    const windowLabel = getWindowAnnouncementLabel(windowData)
+    const queueNumber = windowData?.current?.queue_number
+    const updatedAt = windowData?.current?.updated_at
+    const announcementToken = updatedAt ? `${queueNumber}|${updatedAt}` : queueNumber
+
+    if (!key || !windowLabel || !queueNumber || !announcementToken) return
+
+    if (nextAnnouncedMap[key] !== announcementToken) {
+      announceQueue(queueNumber, windowLabel)
+      nextAnnouncedMap[key] = announcementToken
+      hasChanges = true
+    }
+  })
+
+  if (hasChanges) {
+    lastAnnouncedByWindow.value = nextAnnouncedMap
+    setLastAnnouncedQueues(nextAnnouncedMap, ANNOUNCEMENT_STORAGE_KEY)
+  }
+}
 
 const fetchLiveData = async () => {
   try {
     const response = await fetch('/public/live')
     if (!response.ok) return
-    liveData.value = await response.json()
+
+    const latestData = await response.json()
+    liveData.value = latestData
+    announceQueueUpdates(latestData?.windows || [])
   } catch (error) {
     console.error('Failed to fetch public live data:', error)
   }
 }
 
-usePolling(fetchLiveData, 3000)
+usePolling(fetchLiveData, 1000)
 </script>
 
 <template>

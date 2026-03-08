@@ -194,7 +194,7 @@ const cancelQueue = async () => {
   }
 }
 
-usePolling(fetchAll, 5000)
+usePolling(fetchAll, 2000)
 </script>
 
 <template>
@@ -203,7 +203,7 @@ usePolling(fetchAll, 5000)
       <div class="bg-[#800000] rounded-xl shadow-sm border border-[#800000] p-4 text-center text-white">
         <p class="text-xs uppercase tracking-wide text-yellow-200">Batangas Eastern Colleges</p>
         <h1 class="text-lg font-semibold">Queue Status Tracker</h1>
-        <p class="text-xs text-yellow-100 mt-1">Live updates every 5 seconds</p>
+        <p class="text-xs text-yellow-100 mt-1">Live updates every 2 seconds</p>
       </div>
 
       <div v-if="loading && !queueData && !error" class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 text-center text-gray-500">
