@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { router } from '@inertiajs/vue3';
-import { inject, ref } from 'vue';
+import { inject, onBeforeUnmount, onMounted, ref } from 'vue';
 import { usePolling } from '@/Composables/usePolling';
 
 const props = defineProps({
@@ -17,7 +17,23 @@ const props = defineProps({
 
 const processing = ref(false);
 const feedback = ref({ type: '', message: '' });
+const skipConfirmActive = ref(false);
+const recallConfirmActive = ref(false);
+const completeConfirmActive = ref(false);
 const swal = inject('$swal');
+
+const showSuccessToast = (title, text) => {
+    swal?.fire({
+        toast: true,
+        icon: 'success',
+        title,
+        text,
+        position: 'top-end',
+        timer: 1800,
+        timerProgressBar: true,
+        showConfirmButton: false,
+    });
+};
 
 const setFeedback = (type, message) => {
     feedback.value = { type, message };
@@ -55,7 +71,7 @@ const callNext = () => {
         .then((response) => {
             if (response.data?.status === 'ok') {
                 setFeedback('success', 'Next queue has been called.');
-                swal?.fire({ icon: 'success', title: 'Called', text: 'Next queue has been called.' });
+                showSuccessToast('Called', 'Next queue has been called.');
                 refreshData();
                 return;
             }
@@ -78,26 +94,16 @@ const callNext = () => {
         });
 };
 
-const skip = async () => {
-    if (!props.current) return;
+const executeSkip = () => {
+    if (!props.current || processing.value) return;
 
-    const decision = await swal?.fire({
-        icon: 'warning',
-        title: 'Skip queue?',
-        text: 'This will mark the current queue as skipped.',
-        showCancelButton: true,
-        confirmButtonText: 'Yes, skip',
-    });
-
-    if (swal && !decision?.isConfirmed) return;
-    
     processing.value = true;
 
     window.axios.post(route('cashier.skip', props.current.id))
         .then((response) => {
             if (response.data?.status === 'ok') {
                 setFeedback('success', 'Queue has been skipped.');
-                swal?.fire({ icon: 'success', title: 'Skipped', text: 'Queue has been skipped.' });
+                showSuccessToast('Skipped', 'Queue has been skipped.');
                 refreshData();
                 return;
             }
@@ -105,25 +111,92 @@ const skip = async () => {
             setFeedback('error', 'Queue was not found.');
             swal?.fire({ icon: 'error', title: 'Not found', text: 'Queue was not found.' });
         })
-        .catch(() => {
-            setFeedback('error', 'An error occurred while skipping the queue.');
-            swal?.fire({ icon: 'error', title: 'Error', text: 'An error occurred while skipping the queue.' });
+        .catch((error) => {
+            const message = error?.response?.data?.message || 'An error occurred while skipping the queue.';
+            setFeedback('error', message);
+            swal?.fire({ icon: 'error', title: 'Error', text: message });
         })
         .finally(() => {
             processing.value = false;
         });
 };
 
-const recall = () => {
+const requestSkipConfirmation = async () => {
     if (!props.current) return;
-    
+    if (processing.value || skipConfirmActive.value) return;
+
+    skipConfirmActive.value = true;
+
+    try {
+        const decision = await swal?.fire({
+            icon: 'warning',
+            title: 'Skip queue?',
+            text: 'This will mark the current queue as skipped.',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, skip',
+        });
+
+        if (!skipConfirmActive.value) return;
+
+        if (swal && !decision?.isConfirmed) return;
+
+        executeSkip();
+    } finally {
+        if (skipConfirmActive.value) {
+            skipConfirmActive.value = false;
+        }
+    }
+};
+
+const skip = () => {
+    if (skipConfirmActive.value) {
+        const confirmButton = document.querySelector('.swal2-confirm');
+        if (confirmButton instanceof HTMLButtonElement) {
+            confirmButton.click();
+            return;
+        }
+    }
+
+    requestSkipConfirmation();
+};
+
+const executeComplete = () => {
+    if (!props.current || processing.value) return;
+
+    processing.value = true;
+
+    window.axios.post(route('cashier.complete', props.current.id))
+        .then((response) => {
+            if (response.data?.status === 'ok') {
+                setFeedback('success', 'Queue has been marked as completed.');
+                showSuccessToast('Completed', 'Queue has been marked as completed.');
+                refreshData();
+                return;
+            }
+
+            setFeedback('error', 'Queue was not found.');
+            swal?.fire({ icon: 'error', title: 'Not found', text: 'Queue was not found.' });
+        })
+        .catch((error) => {
+            const message = error?.response?.data?.message || 'An error occurred while completing the queue.';
+            setFeedback('error', message);
+            swal?.fire({ icon: 'error', title: 'Error', text: message });
+        })
+        .finally(() => {
+            processing.value = false;
+        });
+};
+
+const executeRecall = () => {
+    if (!props.current || processing.value) return;
+
     processing.value = true;
 
     window.axios.post(route('cashier.recall', props.current.id))
         .then((response) => {
             if (response.data?.status === 'ok') {
                 setFeedback('success', 'Queue has been recalled.');
-                swal?.fire({ icon: 'success', title: 'Recalled', text: 'Queue has been recalled.' });
+                showSuccessToast('Recalled', 'Queue has been recalled.');
                 refreshData();
                 return;
             }
@@ -140,40 +213,165 @@ const recall = () => {
         });
 };
 
-const complete = async () => {
+const requestRecallConfirmation = async () => {
     if (!props.current) return;
+    if (processing.value || recallConfirmActive.value) return;
 
-    const decision = await swal?.fire({
-        icon: 'question',
-        title: 'Complete queue?',
-        text: 'This will mark the current queue as completed.',
-        showCancelButton: true,
-        confirmButtonText: 'Yes, complete',
-    });
+    recallConfirmActive.value = true;
 
-    if (swal && !decision?.isConfirmed) return;
-    
-    processing.value = true;
+    try {
+        const decision = await swal?.fire({
+            icon: 'question',
+            title: 'Recall queue?',
+            text: 'This will re-announce the current queue.',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, recall',
+        });
 
-    window.axios.post(route('cashier.complete', props.current.id))
-        .then((response) => {
-            if (response.data?.status === 'ok') {
-                setFeedback('success', 'Queue has been marked as completed.');
-                swal?.fire({ icon: 'success', title: 'Completed', text: 'Queue has been marked as completed.' });
-                refreshData();
+        if (!recallConfirmActive.value) return;
+
+        if (swal && !decision?.isConfirmed) return;
+
+        executeRecall();
+    } finally {
+        if (recallConfirmActive.value) {
+            recallConfirmActive.value = false;
+        }
+    }
+};
+
+const recall = () => {
+    if (recallConfirmActive.value) {
+        const confirmButton = document.querySelector('.swal2-confirm');
+        if (confirmButton instanceof HTMLButtonElement) {
+            confirmButton.click();
+            return;
+        }
+    }
+
+    requestRecallConfirmation();
+};
+
+const requestCompleteConfirmation = async () => {
+    if (!props.current) return;
+    if (processing.value || completeConfirmActive.value) return;
+
+    completeConfirmActive.value = true;
+
+    try {
+        const decision = await swal?.fire({
+            icon: 'question',
+            title: 'Complete queue?',
+            text: 'This will mark the current queue as completed.',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, complete',
+        });
+
+        if (!completeConfirmActive.value) return;
+
+        if (swal && !decision?.isConfirmed) return;
+
+        executeComplete();
+    } finally {
+        if (completeConfirmActive.value) {
+            completeConfirmActive.value = false;
+        }
+    }
+};
+
+const complete = () => {
+    if (completeConfirmActive.value) {
+        const confirmButton = document.querySelector('.swal2-confirm');
+        if (confirmButton instanceof HTMLButtonElement) {
+            confirmButton.click();
+            return;
+        }
+    }
+
+    requestCompleteConfirmation();
+};
+
+const isTypingTarget = (target) => {
+    if (!target) return false;
+
+    const tagName = target.tagName?.toLowerCase();
+    return tagName === 'input'
+        || tagName === 'textarea'
+        || target.isContentEditable;
+};
+
+const handleShortcutKeydown = (event) => {
+    if (!event.altKey || event.ctrlKey || event.metaKey) return;
+    if (isTypingTarget(event.target)) return;
+
+    const key = `${event.key || ''}`.toLowerCase();
+    if (!['q', 'w', 'e', 'r'].includes(key)) return;
+
+    event.preventDefault();
+
+    if (processing.value) return;
+
+    if (key === 'q') {
+        callNext();
+        return;
+    }
+
+    if (key === 'w') {
+        if (!props.current) return;
+
+        if (skipConfirmActive.value) {
+            const confirmButton = document.querySelector('.swal2-confirm');
+            if (confirmButton instanceof HTMLButtonElement) {
+                confirmButton.click();
                 return;
             }
 
-            setFeedback('error', 'Queue was not found.');
-            swal?.fire({ icon: 'error', title: 'Not found', text: 'Queue was not found.' });
-        })
-        .catch(() => {
-            setFeedback('error', 'An error occurred while completing the queue.');
-            swal?.fire({ icon: 'error', title: 'Error', text: 'An error occurred while completing the queue.' });
-        })
-        .finally(() => {
-            processing.value = false;
-        });
+            skipConfirmActive.value = false;
+            swal?.close();
+            executeSkip();
+            return;
+        }
+
+        requestSkipConfirmation();
+        return;
+    }
+
+    if (key === 'e') {
+        if (!props.current) return;
+
+        if (recallConfirmActive.value) {
+            const confirmButton = document.querySelector('.swal2-confirm');
+            if (confirmButton instanceof HTMLButtonElement) {
+                confirmButton.click();
+                return;
+            }
+
+            recallConfirmActive.value = false;
+            swal?.close();
+            executeRecall();
+            return;
+        }
+
+        requestRecallConfirmation();
+        return;
+    }
+
+    if (!props.current) return;
+
+    if (completeConfirmActive.value) {
+        const confirmButton = document.querySelector('.swal2-confirm');
+        if (confirmButton instanceof HTMLButtonElement) {
+            confirmButton.click();
+            return;
+        }
+
+        completeConfirmActive.value = false;
+        swal?.close();
+        executeComplete();
+        return;
+    }
+
+    requestCompleteConfirmation();
 };
 
 const reinstate = (queue) => {
@@ -191,7 +389,7 @@ const reinstate = (queue) => {
         .then((response) => {
             if (response.data?.status === 'ok') {
                 setFeedback('success', 'Queue has been reinstated and returned to waiting.');
-                swal?.fire({ icon: 'success', title: 'Reinstated', text: 'Queue has been reinstated and returned to waiting.' });
+                showSuccessToast('Reinstated', 'Queue has been reinstated and returned to waiting.');
                 refreshData();
                 return;
             }
@@ -257,6 +455,15 @@ const serviceCategoryLabel = (queue) => {
     return queue?.service_category?.name || 'N/A';
 };
 
+const clientTypeLabel = (clientType) => {
+    if (!clientType) return 'General';
+
+    return `${clientType}`
+        .split('_')
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' ');
+};
+
 usePolling(() => {
     return router.reload({
         only: ['window', 'current', 'next', 'recentLogs', 'skippedEligible'],
@@ -264,6 +471,14 @@ usePolling(() => {
         preserveScroll: true,
     });
 }, 2000);
+
+onMounted(() => {
+    window.addEventListener('keydown', handleShortcutKeydown, true);
+});
+
+onBeforeUnmount(() => {
+    window.removeEventListener('keydown', handleShortcutKeydown, true);
+});
 </script>
 
 <template>
@@ -407,6 +622,7 @@ usePolling(() => {
                         >
                             <p class="text-lg font-bold" :class="queueTheme(queue.client_type).number">{{ queue.queue_number }}</p>
                             <p class="text-xs mt-1">{{ serviceCategoryLabel(queue) }}</p>
+                            <p class="text-xs mt-1 opacity-90">{{ clientTypeLabel(queue.client_type) }}</p>
                         </div>
                     </div>
 

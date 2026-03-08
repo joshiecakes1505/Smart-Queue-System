@@ -2,17 +2,102 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { usePolling } from '@/Composables/usePolling'
 import { Head } from '@inertiajs/vue3'
+import {
+  announceQueue,
+  getLastAnnouncedQueues,
+  setLastAnnouncedQueues,
+} from '@/Services/QueueAnnouncement'
 
 const data = ref({ windows: [], next_queues: [], timestamp: null })
-const refreshIntervalMs = 2000
+const refreshIntervalMs = 1000
 const isFullscreen = ref(false)
+const hasAnnouncementBaseline = ref(false)
+const lastAnnouncedByWindow = ref({})
+const ANNOUNCEMENT_STORAGE_KEY = 'display-board:last-announced'
 const schoolLogoUrl = document.querySelector('meta[name="app-logo-url"]')?.getAttribute('content')
   || `${window.location.origin}/images/school-logo.png`
+
+const getWindowAnnouncementKey = (windowData) => {
+  if (windowData?.id) return `${windowData.id}`
+  if (windowData?.name) return windowData.name
+  return ''
+}
+
+const getWindowAnnouncementLabel = (windowData) => {
+  const rawValue = windowData?.window_number || windowData?.name || (windowData?.id ? `${windowData.id}` : '')
+  if (!rawValue) return ''
+
+  return `${rawValue}`.replace(/^(window|counter)\s*/i, '').trim()
+    || `${rawValue}`.trim()
+}
+
+const buildCurrentQueueMap = (windows = []) => {
+  return windows.reduce((queueMap, windowData) => {
+    const key = getWindowAnnouncementKey(windowData)
+    const queueNumber = windowData?.current?.queue_number
+    const updatedAt = windowData?.current?.updated_at
+    const announcementToken = updatedAt ? `${queueNumber}|${updatedAt}` : queueNumber
+
+    if (key && queueNumber && announcementToken) {
+      queueMap[key] = announcementToken
+    }
+
+    return queueMap
+  }, {})
+}
+
+const initializeAnnouncementBaseline = (windows = []) => {
+  if (hasAnnouncementBaseline.value) return
+
+  const persistedMap = getLastAnnouncedQueues(ANNOUNCEMENT_STORAGE_KEY)
+
+  if (Object.keys(persistedMap).length) {
+    lastAnnouncedByWindow.value = persistedMap
+  } else {
+    const currentMap = buildCurrentQueueMap(windows)
+    lastAnnouncedByWindow.value = currentMap
+    setLastAnnouncedQueues(currentMap, ANNOUNCEMENT_STORAGE_KEY)
+  }
+
+  hasAnnouncementBaseline.value = true
+}
+
+const announceQueueUpdates = (windows = []) => {
+  initializeAnnouncementBaseline(windows)
+
+  let hasChanges = false
+  const nextAnnouncedMap = { ...lastAnnouncedByWindow.value }
+
+  windows.forEach((windowData) => {
+    const key = getWindowAnnouncementKey(windowData)
+    const windowLabel = getWindowAnnouncementLabel(windowData)
+    const queueNumber = windowData?.current?.queue_number
+    const updatedAt = windowData?.current?.updated_at
+    const announcementToken = updatedAt ? `${queueNumber}|${updatedAt}` : queueNumber
+
+    if (!key || !windowLabel || !queueNumber || !announcementToken) return
+
+    if (nextAnnouncedMap[key] !== announcementToken) {
+      announceQueue(queueNumber, windowLabel)
+      nextAnnouncedMap[key] = announcementToken
+      hasChanges = true
+    }
+  })
+
+  if (hasChanges) {
+    lastAnnouncedByWindow.value = nextAnnouncedMap
+    setLastAnnouncedQueues(nextAnnouncedMap, ANNOUNCEMENT_STORAGE_KEY)
+  }
+}
 
 const fetchData = async () => {
   try {
     const res = await fetch(window.route('display.data'))
-    data.value = await res.json()
+    if (!res.ok) return
+
+    const latestData = await res.json()
+    data.value = latestData
+    announceQueueUpdates(latestData?.windows || [])
   } catch (error) {
     console.error('Failed to fetch display data:', error)
   }
@@ -74,6 +159,43 @@ const serviceCategoryLabel = (queue) => {
   return queue?.service_category || 'N/A'
 }
 
+const clientTypeLabel = (clientType) => {
+  if (!clientType) return 'General'
+
+  return `${clientType}`
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
+const isWindowClosed = (windowData) => {
+  return !windowData?.assigned_user
+}
+
+const windowPrimaryStatus = (windowData) => {
+  if (isWindowClosed(windowData)) {
+    return 'Closed'
+  }
+
+  if (windowData?.current) {
+    return clientTypeLabel(windowData.current.client_type)
+  }
+
+  return 'Waiting for next'
+}
+
+const windowSecondaryStatus = (windowData) => {
+  if (isWindowClosed(windowData)) {
+    return '—'
+  }
+
+  if (windowData?.current) {
+    return serviceCategoryLabel(windowData.current)
+  }
+
+  return '—'
+}
+
 onMounted(() => {
   syncFullscreenState()
   document.addEventListener('fullscreenchange', syncFullscreenState)
@@ -105,9 +227,9 @@ onBeforeUnmount(() => {
               </div>
             </div>
           </div>
-          <div class="text-left lg:text-right">
-            <p class="text-base sm:text-lg text-yellow-200">Current Time</p>
-            <p class="mt-1 text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight">{{ formatTime(data.timestamp) }}</p>
+          <div class="text-left lg:text-right lg:mr-10">
+            <p class="text-lg sm:text-xl text-yellow-200">Current Time</p>
+            <p class="mt-1 text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight">{{ formatTime(data.timestamp) }}</p>
           </div>
         </div>
       </div>
@@ -157,8 +279,8 @@ onBeforeUnmount(() => {
 
             <!-- Queue Details -->
             <div class="text-center text-gray-700 space-y-1">
-              <p class="text-lg font-semibold">{{ window.current?.client_name || 'Waiting for next' }}</p>
-              <p class="text-sm text-gray-500">{{ serviceCategoryLabel(window.current) || '—' }}</p>
+              <p class="text-lg font-semibold" :class="isWindowClosed(window) ? 'text-gray-500' : 'text-gray-700'">{{ windowPrimaryStatus(window) }}</p>
+              <p class="text-sm text-gray-500">{{ windowSecondaryStatus(window) }}</p>
             </div>
           </div>
         </div>
@@ -182,6 +304,7 @@ onBeforeUnmount(() => {
             <p class="text-xs text-gray-500 mb-2">Position {{ idx + 1 }}</p>
             <p class="text-3xl sm:text-4xl font-bold leading-tight" :class="queueTheme(queue.client_type).numberText">{{ queue.queue_number }}</p>
             <p class="text-sm text-gray-600 mt-2">{{ serviceCategoryLabel(queue) }}</p>
+            <p class="text-sm text-gray-500 mt-1">{{ clientTypeLabel(queue.client_type) }}</p>
           </div>
         </div>
 

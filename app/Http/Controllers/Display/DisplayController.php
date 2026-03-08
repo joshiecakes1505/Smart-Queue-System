@@ -33,6 +33,7 @@ class DisplayController extends Controller
                     'assigned_user' => $window->assignedUser?->name,
                     'current' => $current ? [
                         'queue_number' => $current->queue_number,
+                        'updated_at' => $current->updated_at?->toIso8601String(),
                         'client_name' => $current->client_name,
                         'client_type' => $current->client_type,
                         'service_category' => $current->serviceCategory->name ?? null,
