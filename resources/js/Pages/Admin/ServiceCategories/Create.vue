@@ -11,6 +11,7 @@ const form = useForm({
   description: '',
   max_queues_per_day: '',
   avg_service_seconds: '',
+  regulars_per_priority_cycle: 1,
 });
 
 function submit() {
@@ -103,6 +104,19 @@ function submit() {
               class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#800000]"
             />
             <p v-if="form.errors.avg_service_seconds" class="text-red-500 text-sm mt-1">{{ form.errors.avg_service_seconds }}</p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Regulars Before Priority</label>
+            <input
+              v-model="form.regulars_per_priority_cycle"
+              type="number"
+              min="0"
+              max="20"
+              class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#800000]"
+            />
+            <p class="text-xs text-gray-500 mt-1">Set to 0 to always prioritize priority clients when available.</p>
+            <p v-if="form.errors.regulars_per_priority_cycle" class="text-red-500 text-sm mt-1">{{ form.errors.regulars_per_priority_cycle }}</p>
           </div>
         </div>
 

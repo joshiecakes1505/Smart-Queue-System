@@ -10,6 +10,8 @@ use Inertia\Inertia;
 
 class ReportController extends Controller
 {
+    private const SUPPORTED_PERIODS = ['daily', 'weekly', 'monthly', 'yearly'];
+
     public function __construct()
     {
         $this->middleware('auth:admin');
@@ -18,12 +20,34 @@ class ReportController extends Controller
 
     public function daily(Request $request)
     {
-        $dateInput = $request->input('date');
-        $selectedDate = $dateInput ? Carbon::parse($dateInput)->toDateString() : now()->toDateString();
+        $selectedDate = $this->resolveSelectedDate($request->input('date'));
+        $selectedPeriod = $this->resolveSelectedPeriod($request->input('period'));
+
+        $metrics = $this->buildReportMetrics($selectedDate, $selectedPeriod);
+
+        return Inertia::render('Admin/Reports/Daily', [
+            'metrics' => $metrics,
+        ]);
+    }
+
+    public function dailyPrint(Request $request)
+    {
+        $selectedDate = $this->resolveSelectedDate($request->input('date'));
+        $selectedPeriod = $this->resolveSelectedPeriod($request->input('period'));
+
+        return response()->view('admin.reports.daily-print', [
+            'metrics' => $this->buildReportMetrics($selectedDate, $selectedPeriod),
+        ]);
+    }
+
+    private function buildReportMetrics(string $selectedDate, string $selectedPeriod): array
+    {
+        $anchorDate = Carbon::parse($selectedDate);
+        [$rangeStart, $rangeEnd, $periodLabel] = $this->resolvePeriodRange($anchorDate, $selectedPeriod);
 
         $queuesQuery = Queue::query()
             ->with('serviceCategory')
-            ->whereDate('created_at', $selectedDate);
+            ->whereBetween('created_at', [$rangeStart, $rangeEnd]);
 
         $queues = $queuesQuery->get();
 
@@ -67,7 +91,10 @@ class ReportController extends Controller
             ->sortByDesc('total')
             ->values();
 
-        $hourlyData = collect(range(0, 23))->map(function (int $hour) use ($queues) {
+        $reportStartHour = 7;
+        $reportEndHour = 16;
+
+        $hourlyData = collect(range($reportStartHour, $reportEndHour))->map(function (int $hour) use ($queues) {
             $hourCount = $queues->filter(function (Queue $queue) use ($hour) {
                 return (int) $queue->created_at?->format('G') === $hour;
             })->count();
@@ -78,8 +105,11 @@ class ReportController extends Controller
             ];
         });
 
-        $metrics = [
+        return [
             'selected_date' => $selectedDate,
+            'selected_period' => $selectedPeriod,
+            'period_label' => $periodLabel,
+            'available_periods' => self::SUPPORTED_PERIODS,
             'total_queues' => $total,
             'waiting' => $waiting,
             'called' => $called,
@@ -93,9 +123,58 @@ class ReportController extends Controller
             'service_category_breakdown' => $serviceCategoryBreakdown,
             'hourly_data' => $hourlyData,
         ];
+    }
 
-        return Inertia::render('Admin/Reports/Daily', [
-            'metrics' => $metrics,
-        ]);
+    private function resolveSelectedDate(?string $dateInput): string
+    {
+        return $dateInput ? Carbon::parse($dateInput)->toDateString() : now()->toDateString();
+    }
+
+    private function resolveSelectedPeriod(?string $periodInput): string
+    {
+        $period = strtolower((string) $periodInput);
+        return in_array($period, self::SUPPORTED_PERIODS, true) ? $period : 'daily';
+    }
+
+    private function resolvePeriodRange(Carbon $anchorDate, string $selectedPeriod): array
+    {
+        if ($selectedPeriod === 'weekly') {
+            $start = $anchorDate->copy()->startOfWeek();
+            $end = $anchorDate->copy()->endOfWeek();
+
+            return [
+                $start->copy()->startOfDay(),
+                $end->copy()->endOfDay(),
+                sprintf('Weekly (%s to %s)', $start->toDateString(), $end->toDateString()),
+            ];
+        }
+
+        if ($selectedPeriod === 'monthly') {
+            $start = $anchorDate->copy()->startOfMonth();
+            $end = $anchorDate->copy()->endOfMonth();
+
+            return [
+                $start->copy()->startOfDay(),
+                $end->copy()->endOfDay(),
+                sprintf('Monthly (%s)', $start->format('F Y')),
+            ];
+        }
+
+        if ($selectedPeriod === 'yearly') {
+            $start = $anchorDate->copy()->startOfYear();
+            $end = $anchorDate->copy()->endOfYear();
+
+            return [
+                $start->copy()->startOfDay(),
+                $end->copy()->endOfDay(),
+                sprintf('Yearly (%s)', $start->format('Y')),
+            ];
+        }
+
+        return [
+            $anchorDate->copy()->startOfDay(),
+            $anchorDate->copy()->endOfDay(),
+            sprintf('Daily (%s)', $anchorDate->toDateString()),
+        ];
     }
 }
