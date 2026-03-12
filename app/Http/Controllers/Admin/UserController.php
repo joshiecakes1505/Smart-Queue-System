@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
+use App\Mail\AccountCreatedMail;
 use App\Models\CashierWindow;
 use App\Models\Role;
 use App\Models\User;
@@ -12,9 +13,12 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 
 class UserController extends Controller
 {
+    private const DEFAULT_PASSWORD = 'BECQueue@2026';
+
     public function __construct()
     {
         $this->middleware('auth:admin');
@@ -38,6 +42,7 @@ class UserController extends Controller
             'users' => $users,
             'cashiers' => $cashiers,
             'cashierWindows' => $cashierWindows,
+            'authUserId' => auth('admin')->id(),
         ]);
     }
 
@@ -87,17 +92,28 @@ class UserController extends Controller
 
     public function store(StoreUserRequest $request)
     {
-        User::create(array_merge(
+        $user = User::create(array_merge(
             $request->validated(),
-            ['password' => Hash::make($request->password)]
+            ['password' => Hash::make(self::DEFAULT_PASSWORD)]
         ));
+
+        $this->sendAccountCreatedEmail($user);
+
         return redirect()->route('admin.users.index')->with('success', 'User created.');
     }
 
     public function edit(User $user)
     {
-        $roles = \App\Models\Role::pluck('name', 'id');
-        return Inertia::render('Admin/Users/Edit', ['user' => $user, 'roles' => $roles]);
+        $roles = Role::query()
+            ->whereIn('name', ['admin', 'cashier', 'frontdesk'])
+            ->orderByRaw("CASE name WHEN 'admin' THEN 1 WHEN 'cashier' THEN 2 WHEN 'frontdesk' THEN 3 ELSE 4 END")
+            ->get(['id', 'name']);
+
+        return Inertia::render('Admin/Users/Edit', [
+            'user' => $user->only(['id', 'name', 'email', 'role_id']),
+            'roles' => $roles,
+            'authUserId' => auth('admin')->id(),
+        ]);
     }
 
     public function update(UpdateUserRequest $request, User $user)
@@ -106,9 +122,30 @@ class UserController extends Controller
         return redirect()->route('admin.users.index')->with('success', 'User updated.');
     }
 
+    public function resetPassword(User $user)
+    {
+        abort_if(auth('admin')->id() === $user->id, 403, 'You cannot reset your own password from this panel.');
+
+        $user->update([
+            'password' => Hash::make(self::DEFAULT_PASSWORD),
+        ]);
+
+        $this->sendAccountCreatedEmail($user);
+
+        return redirect()->route('admin.users.edit', $user)->with('success', 'Password reset to the default value and email sent.');
+    }
+
     public function destroy(User $user)
     {
         $user->delete();
         return redirect()->route('admin.users.index')->with('success', 'User deleted.');
+    }
+
+    private function sendAccountCreatedEmail(User $user): void
+    {
+        Mail::to($user->email)->send(new AccountCreatedMail(
+            email: $user->email,
+            password: self::DEFAULT_PASSWORD,
+        ));
     }
 }

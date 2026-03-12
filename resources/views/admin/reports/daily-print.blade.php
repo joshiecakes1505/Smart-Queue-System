@@ -90,6 +90,12 @@
             margin-bottom: 18px;
         }
 
+        .split {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 16px;
+        }
+
         @media print {
             body {
                 margin: 12mm;
@@ -101,6 +107,10 @@
 
             .section {
                 break-inside: avoid;
+            }
+
+            .split {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
             }
         }
     </style>
@@ -193,24 +203,46 @@
         </table>
     </div>
 
-    <div class="section">
-        <h2>Hourly Queue Volume (07:00 - 16:00)</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Hour</th>
-                    <th>Queues Created</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach ($metrics['hourly_data'] as $row)
+    <div class="split">
+        <div class="section">
+            <h2>Hourly Queue Volume (07:00 - 16:00)</h2>
+            <table>
+                <thead>
                     <tr>
-                        <td>{{ $row['hour'] }}</td>
-                        <td>{{ $row['count'] }}</td>
+                        <th>Hour</th>
+                        <th>Queues Created</th>
                     </tr>
-                @endforeach
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @foreach ($metrics['hourly_data'] as $row)
+                        <tr>
+                            <td>{{ $row['hour'] }}</td>
+                            <td>{{ $row['count'] }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section">
+            <h2>Weekday Queue Trend</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Day</th>
+                        <th>Queues Created</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($metrics['weekday_trend'] as $row)
+                        <tr>
+                            <td>{{ $row['day'] }}</td>
+                            <td>{{ $row['count'] }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
     </div>
 </body>
 </html>

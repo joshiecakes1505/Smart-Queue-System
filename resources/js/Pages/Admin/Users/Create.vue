@@ -12,7 +12,7 @@ const props = defineProps({
 
 const swal = inject('$swal')
 
-const form = useForm({ name: '', email: '', password: '', role_id: '' })
+const form = useForm({ name: '', email: '', role_id: '' })
 
 function submit() {
   form.post(route('admin.users.store'), {
@@ -72,15 +72,9 @@ function submit() {
             <p v-if="form.errors.email" class="mt-1 text-sm text-red-600">{{ form.errors.email }}</p>
           </div>
 
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">Password</label>
-            <input
-              v-model="form.password"
-              type="password"
-              class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#800000]"
-              placeholder="Minimum 8 characters"
-            />
-            <p v-if="form.errors.password" class="mt-1 text-sm text-red-600">{{ form.errors.password }}</p>
+          <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            New accounts are created with the default password <span class="font-semibold">BECQueue@2026</span>.
+            The password is emailed automatically to the user after creation.
           </div>
 
           <div>

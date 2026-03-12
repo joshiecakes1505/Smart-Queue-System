@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Queue;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Inertia\Inertia;
 
 class ReportController extends Controller
@@ -105,6 +106,8 @@ class ReportController extends Controller
             ];
         });
 
+        $weekdayTrend = $this->buildWeekdayTrend($queues);
+
         return [
             'selected_date' => $selectedDate,
             'selected_period' => $selectedPeriod,
@@ -122,7 +125,29 @@ class ReportController extends Controller
             'client_breakdown' => $clientBreakdown,
             'service_category_breakdown' => $serviceCategoryBreakdown,
             'hourly_data' => $hourlyData,
+            'weekday_trend' => $weekdayTrend,
         ];
+    }
+
+    private function buildWeekdayTrend(Collection $queues): Collection
+    {
+        $weekdayLabels = [
+            1 => 'Monday',
+            2 => 'Tuesday',
+            3 => 'Wednesday',
+            4 => 'Thursday',
+            5 => 'Friday',
+        ];
+
+        return collect($weekdayLabels)->map(function (string $day, int $isoDay) use ($queues) {
+            return [
+                'day' => $day,
+                'short_day' => substr($day, 0, 3),
+                'count' => $queues->filter(function (Queue $queue) use ($isoDay) {
+                    return (int) $queue->created_at?->dayOfWeekIso === $isoDay;
+                })->count(),
+            ];
+        })->values();
     }
 
     private function resolveSelectedDate(?string $dateInput): string

@@ -17,6 +17,10 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  authUserId: {
+    type: Number,
+    default: null,
+  },
 });
 
 const selectedCashierByWindow = reactive(
@@ -94,16 +98,33 @@ usePolling(() => {
                 <th class="text-left py-3 px-4 font-semibold text-gray-700">Name</th>
                 <th class="text-left py-3 px-4 font-semibold text-gray-700">Email</th>
                 <th class="text-left py-3 px-4 font-semibold text-gray-700">Role</th>
+                <th class="text-left py-3 px-4 font-semibold text-gray-700">Actions</th>
               </tr>
             </thead>
             <tbody>
               <tr v-if="users.length === 0">
-                <td colspan="3" class="text-center py-8 text-gray-500">No users found</td>
+                <td colspan="4" class="text-center py-8 text-gray-500">No users found</td>
               </tr>
               <tr v-for="user in users" :key="user.id" class="border-b border-gray-100 hover:bg-gray-50">
                 <td class="py-3 px-4 font-medium text-gray-900">{{ user.name }}</td>
                 <td class="py-3 px-4 text-gray-700">{{ user.email }}</td>
                 <td class="py-3 px-4 capitalize">{{ roleLabel(user) }}</td>
+                <td class="py-3 px-4">
+                  <div class="flex items-center gap-2">
+                    <Link
+                      :href="route('admin.users.edit', user.id)"
+                      class="inline-flex items-center rounded-lg border border-[#800000] px-4 py-2 text-sm font-semibold text-[#800000] transition hover:bg-[#800000] hover:text-white"
+                    >
+                      Edit
+                    </Link>
+                    <span
+                      v-if="user.id === authUserId"
+                      class="text-xs font-medium uppercase tracking-wide text-gray-400"
+                    >
+                      Current Account
+                    </span>
+                  </div>
+                </td>
               </tr>
             </tbody>
           </table>
