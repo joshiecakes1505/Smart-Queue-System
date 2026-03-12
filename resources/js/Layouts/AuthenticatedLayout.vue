@@ -26,7 +26,7 @@ const navigationLinks = computed(() => {
             { label: 'Admin Dashboard', href: route('admin.dashboard') },
             { label: 'Manage Users', href: route('admin.users.index') },
             { label: 'Service Categories', href: route('admin.service-categories.index') },
-            { label: 'Daily Reports', href: route('admin.reports.daily') },
+            { label: 'Reports', href: route('admin.reports.daily') },
         ];
     }
 

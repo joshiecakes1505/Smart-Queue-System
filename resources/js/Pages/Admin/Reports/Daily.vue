@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { router } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { usePolling } from '@/Composables/usePolling';
 
 const props = defineProps({
@@ -12,12 +12,29 @@ const props = defineProps({
 });
 
 const selectedDate = ref(props.metrics.selected_date);
+const selectedPeriod = ref(props.metrics.selected_period || 'daily');
+
+const maxWeekdayTrendCount = computed(() => {
+  const counts = props.metrics.weekday_trend?.map((row) => row.count) || [];
+  return Math.max(...counts, 1);
+});
 
 const applyDateFilter = () => {
-  router.get(route('admin.reports.daily'), { date: selectedDate.value }, {
+  router.get(route('admin.reports.daily'), {
+    date: selectedDate.value,
+    period: selectedPeriod.value,
+  }, {
     preserveState: true,
     replace: true,
   });
+};
+
+const printReport = () => {
+  const printUrl = route('admin.reports.daily.print', {
+    date: selectedDate.value,
+    period: selectedPeriod.value,
+  });
+  window.open(printUrl, '_blank');
 };
 
 const statusLabel = (status) => {
@@ -42,6 +59,8 @@ const clientTypeLabel = (type) => {
   return map[type] || type;
 };
 
+const weekdayTrendWidth = (count) => `${(count / maxWeekdayTrendCount.value) * 100}%`;
+
 usePolling(() => {
   return router.reload({
     only: ['metrics'],
@@ -52,15 +71,30 @@ usePolling(() => {
 </script>
 
 <template>
-  <AuthenticatedLayout title="Daily Reports">
+  <AuthenticatedLayout title="Queue Reports">
     <div class="space-y-6">
       <div class="bg-white rounded-lg shadow-sm p-6">
         <div class="flex flex-wrap items-end justify-between gap-4">
-          <h1 class="text-2xl font-semibold text-[#800000]">Daily Reports</h1>
+          <div>
+            <h1 class="text-2xl font-semibold text-[#800000]">Queue Reports</h1>
+            <p class="text-sm text-gray-600 mt-1">{{ metrics.period_label }}</p>
+          </div>
 
           <div class="flex items-end gap-3">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Date</label>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Period</label>
+              <select
+                v-model="selectedPeriod"
+                class="border border-gray-300 rounded-lg pl-3 pr-10 py-2 focus:outline-none focus:ring-2 focus:ring-[#800000]"
+              >
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+                <option value="yearly">Yearly</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Anchor Date</label>
               <input
                 v-model="selectedDate"
                 type="date"
@@ -72,6 +106,12 @@ usePolling(() => {
               class="bg-[#FFC107] hover:bg-[#FFB300] text-[#800000] px-4 py-2 rounded-lg font-semibold transition"
             >
               Apply
+            </button>
+            <button
+              @click="printReport"
+              class="bg-[#800000] hover:bg-[#6a0000] text-white px-4 py-2 rounded-lg font-semibold transition"
+            >
+              Print Report
             </button>
           </div>
         </div>
@@ -158,23 +198,55 @@ usePolling(() => {
         </div>
       </div>
 
-      <div class="bg-white rounded-lg shadow-sm p-6">
-        <h2 class="text-xl font-semibold text-[#800000] mb-4">Hourly Queue Volume</h2>
-        <div class="overflow-x-auto">
-          <table class="w-full">
-            <thead>
-              <tr class="border-b border-gray-200">
-                <th class="text-left py-3 px-4 font-semibold text-gray-700">Hour</th>
-                <th class="text-left py-3 px-4 font-semibold text-gray-700">Queues Created</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="row in metrics.hourly_data" :key="row.hour" class="border-b border-gray-100">
-                <td class="py-2 px-4">{{ row.hour }}</td>
-                <td class="py-2 px-4">{{ row.count }}</td>
-              </tr>
-            </tbody>
-          </table>
+      <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <div class="bg-white rounded-lg shadow-sm p-6">
+          <h2 class="text-xl font-semibold text-[#800000] mb-4">Hourly Queue Volume</h2>
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead>
+                <tr class="border-b border-gray-200">
+                  <th class="text-left py-3 px-4 font-semibold text-gray-700">Hour</th>
+                  <th class="text-left py-3 px-4 font-semibold text-gray-700">Queues Created</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in metrics.hourly_data" :key="row.hour" class="border-b border-gray-100">
+                  <td class="py-2 px-4">{{ row.hour }}</td>
+                  <td class="py-2 px-4">{{ row.count }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-sm p-6">
+          <div class="flex items-start justify-between gap-4 mb-4">
+            <div>
+              <h2 class="text-xl font-semibold text-[#800000]">Weekday Queue Trend</h2>
+              <p class="text-sm text-gray-600 mt-1">Queue volume grouped from Monday to Friday for the selected period.</p>
+            </div>
+            <div class="text-right">
+              <p class="text-xs uppercase tracking-wide text-gray-500">Peak Day</p>
+              <p class="text-sm font-semibold text-[#800000]">
+                {{ [...metrics.weekday_trend].sort((left, right) => right.count - left.count)[0]?.day || 'N/A' }}
+              </p>
+            </div>
+          </div>
+
+          <div class="space-y-4">
+            <div v-for="row in metrics.weekday_trend" :key="row.day">
+              <div class="flex items-center justify-between gap-4 mb-2">
+                <span class="text-sm font-medium text-gray-700">{{ row.day }}</span>
+                <span class="text-sm font-semibold text-[#800000]">{{ row.count }}</span>
+              </div>
+              <div class="h-2.5 rounded-full bg-gray-100 overflow-hidden">
+                <div
+                  class="h-full rounded-full bg-[#FFC107] transition-all duration-300"
+                  :style="{ width: weekdayTrendWidth(row.count) }"
+                />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

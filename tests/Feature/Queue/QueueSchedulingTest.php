@@ -9,14 +9,13 @@ use App\Models\ServiceCategory;
 use App\Models\User;
 use App\Services\QueueService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use PHPUnit\Framework\Assert;
 use Tests\TestCase;
 
 class QueueSchedulingTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_weighted_priority_serves_two_regular_then_one_priority(): void
+    public function test_weighted_priority_serves_one_regular_then_one_priority_by_default(): void
     {
         $cashierRole = Role::create(['name' => 'cashier', 'description' => 'Cashier']);
         $cashierUser = User::factory()->create(['role_id' => $cashierRole->id]);
@@ -42,38 +41,29 @@ class QueueSchedulingTest extends TestCase
             'client_type' => 'student',
         ]);
 
-        $second = $service->createQueue([
-            'service_category_id' => $category->id,
-            'client_name' => 'Regular 2',
-            'client_type' => 'parent',
-        ]);
-
         $priority = $service->createQueue([
             'service_category_id' => $category->id,
             'client_name' => 'Priority',
             'client_type' => 'senior_citizen',
         ]);
 
-        $thirdRegular = $service->createQueue([
+        $second = $service->createQueue([
             'service_category_id' => $category->id,
-            'client_name' => 'Regular 3',
-            'client_type' => 'visitor',
+            'client_name' => 'Regular 2',
+            'client_type' => 'parent',
         ]);
 
         $served1 = $service->callNext($window->id, $category->id);
-        Assert::assertSame($first->id, $served1?->id);
+        $this->assertSame($first->id, $served1?->id);
         $service->complete($served1->id);
 
         $served2 = $service->callNext($window->id, $category->id);
-        Assert::assertSame($second->id, $served2?->id);
+        $this->assertSame($priority->id, $served2?->id);
         $service->complete($served2->id);
 
         $served3 = $service->callNext($window->id, $category->id);
-        Assert::assertSame($priority->id, $served3?->id);
+        $this->assertSame($second->id, $served3?->id);
         $service->complete($served3->id);
-
-        $served4 = $service->callNext($window->id, $category->id);
-        Assert::assertSame($thirdRegular->id, $served4?->id);
     }
 
     public function test_eta_is_calculated_for_waiting_queue(): void
@@ -112,10 +102,61 @@ class QueueSchedulingTest extends TestCase
 
         $eta = $service->estimateWaitMinutes($target);
 
-        Assert::assertNotNull($eta);
-        Assert::assertIsInt($eta);
-        Assert::assertGreaterThanOrEqual(0, $eta);
-        Assert::assertSame(Queue::STATUS_WAITING, $target->status);
+        $this->assertNotNull($eta);
+        $this->assertIsInt($eta);
+        $this->assertGreaterThanOrEqual(0, $eta);
+        $this->assertSame(Queue::STATUS_WAITING, $target->status);
+    }
+
+    public function test_service_category_rule_can_prioritize_after_one_regular(): void
+    {
+        $cashierRole = Role::create(['name' => 'cashier', 'description' => 'Cashier']);
+        $cashierUser = User::factory()->create(['role_id' => $cashierRole->id]);
+
+        $window = CashierWindow::create([
+            'name' => 'Window Rule Test',
+            'assigned_user_id' => $cashierUser->id,
+            'active' => true,
+        ]);
+
+        $category = ServiceCategory::create([
+            'name' => 'Rule Configurable',
+            'prefix' => 'R',
+            'description' => 'Queue rule config test',
+            'avg_service_seconds' => 300,
+            'regulars_per_priority_cycle' => 1,
+        ]);
+
+        $service = app(QueueService::class);
+
+        $regular1 = $service->createQueue([
+            'service_category_id' => $category->id,
+            'client_name' => 'Regular 1',
+            'client_type' => Queue::CLIENT_TYPE_STUDENT,
+        ]);
+
+        $priority = $service->createQueue([
+            'service_category_id' => $category->id,
+            'client_name' => 'Priority',
+            'client_type' => Queue::CLIENT_TYPE_HIGH_PRIORITY,
+        ]);
+
+        $regular2 = $service->createQueue([
+            'service_category_id' => $category->id,
+            'client_name' => 'Regular 2',
+            'client_type' => Queue::CLIENT_TYPE_PARENT,
+        ]);
+
+        $served1 = $service->callNext($window->id, $category->id);
+        $this->assertSame($regular1->id, $served1?->id);
+        $service->complete($served1->id);
+
+        $served2 = $service->callNext($window->id, $category->id);
+        $this->assertSame($priority->id, $served2?->id);
+        $service->complete($served2->id);
+
+        $served3 = $service->callNext($window->id, $category->id);
+        $this->assertSame($regular2->id, $served3?->id);
     }
 
     public function test_create_queue_skips_existing_queue_number_and_generates_next_available(): void
@@ -143,6 +184,6 @@ class QueueSchedulingTest extends TestCase
             'client_type' => Queue::CLIENT_TYPE_STUDENT,
         ]);
 
-        Assert::assertSame('T-002', $newQueue->queue_number);
+        $this->assertSame('T-002', $newQueue->queue_number);
     }
 }

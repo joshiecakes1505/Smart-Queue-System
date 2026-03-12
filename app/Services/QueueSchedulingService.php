@@ -5,11 +5,12 @@ namespace App\Services;
 use App\Models\CashierWindow;
 use App\Models\Queue;
 use App\Models\QueueCounter;
+use App\Models\ServiceCategory;
 use Illuminate\Database\Eloquent\Builder;
 
 class QueueSchedulingService
 {
-    private const REGULARS_PER_CYCLE = 2;
+    private const DEFAULT_REGULARS_PER_CYCLE = 1;
 
     public function assignWindowForIncomingQueue(int $serviceCategoryId, QueueCounter $counter): ?int
     {
@@ -61,6 +62,8 @@ class QueueSchedulingService
 
     public function selectNextQueueForWindow(int $windowId, ?int $serviceCategoryId, QueueCounter $counter): ?Queue
     {
+        $regularsPerCycle = $this->resolveRegularsPerCycle($serviceCategoryId);
+
         $windowScopedQuery = Queue::query()
             ->where('status', Queue::STATUS_WAITING)
             ->where('cashier_window_id', $windowId);
@@ -69,7 +72,7 @@ class QueueSchedulingService
             $windowScopedQuery->where('service_category_id', $serviceCategoryId);
         }
 
-        $next = $this->pickWeightedQueue($windowScopedQuery, $counter);
+        $next = $this->pickWeightedQueue($windowScopedQuery, $counter, $regularsPerCycle);
 
         if ($next) {
             return $next;
@@ -81,7 +84,7 @@ class QueueSchedulingService
             $globalQuery->where('service_category_id', $serviceCategoryId);
         }
 
-        $next = $this->pickWeightedQueue($globalQuery, $counter);
+        $next = $this->pickWeightedQueue($globalQuery, $counter, $regularsPerCycle);
 
         if ($next && (int) ($next->cashier_window_id ?? 0) !== $windowId) {
             $next->cashier_window_id = $windowId;
@@ -139,7 +142,7 @@ class QueueSchedulingService
         return (int) ceil($estimatedSeconds / 60);
     }
 
-    private function pickWeightedQueue(Builder $baseQuery, QueueCounter $counter): ?Queue
+    private function pickWeightedQueue(Builder $baseQuery, QueueCounter $counter, int $regularsPerCycle): ?Queue
     {
         $priorityQueue = (clone $baseQuery)
             ->whereIn('client_type', Queue::PRIORITY_CLIENT_TYPES)
@@ -157,7 +160,7 @@ class QueueSchedulingService
 
         $regularServedInCycle = (int) ($counter->regular_served_in_cycle ?? 0);
 
-        if ($priorityQueue && $regularServedInCycle >= self::REGULARS_PER_CYCLE) {
+        if ($priorityQueue && ($regularsPerCycle === 0 || $regularServedInCycle >= $regularsPerCycle)) {
             $counter->regular_served_in_cycle = 0;
             $counter->save();
 
@@ -165,7 +168,9 @@ class QueueSchedulingService
         }
 
         if ($regularQueue) {
-            $counter->regular_served_in_cycle = min(self::REGULARS_PER_CYCLE, $regularServedInCycle + 1);
+            $counter->regular_served_in_cycle = $regularsPerCycle > 0
+                ? min($regularsPerCycle, $regularServedInCycle + 1)
+                : 0;
             $counter->save();
 
             return $regularQueue;
@@ -175,6 +180,23 @@ class QueueSchedulingService
         $counter->save();
 
         return $priorityQueue;
+    }
+
+    private function resolveRegularsPerCycle(?int $serviceCategoryId): int
+    {
+        if (! $serviceCategoryId) {
+            return self::DEFAULT_REGULARS_PER_CYCLE;
+        }
+
+        $configuredValue = ServiceCategory::query()
+            ->whereKey($serviceCategoryId)
+            ->value('regulars_per_priority_cycle');
+
+        if ($configuredValue === null) {
+            return self::DEFAULT_REGULARS_PER_CYCLE;
+        }
+
+        return max(0, (int) $configuredValue);
     }
 
     /**

@@ -29,6 +29,7 @@ class StoreServiceCategoryRequest extends FormRequest
             'description' => ['nullable', 'string', 'max:1000'],
             'max_queues_per_day' => ['nullable', 'integer', 'min:1'],
             'avg_service_seconds' => ['nullable', 'integer', 'min:1'],
+            'regulars_per_priority_cycle' => ['nullable', 'integer', 'min:0', 'max:20'],
         ];
     }
 }

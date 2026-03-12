@@ -73,12 +73,13 @@ usePolling(() => {
               <th class="text-left py-3 px-4 font-semibold text-gray-700">Prefix</th>
               <th class="text-left py-3 px-4 font-semibold text-gray-700">Avg Service (min)</th>
               <th class="text-left py-3 px-4 font-semibold text-gray-700">Max / Day</th>
+              <th class="text-left py-3 px-4 font-semibold text-gray-700">Queue Rule</th>
               <th class="text-left py-3 px-4 font-semibold text-gray-700">Actions</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="props.categories.length === 0">
-              <td colspan="5" class="text-center py-8 text-gray-500">No service categories found.</td>
+              <td colspan="6" class="text-center py-8 text-gray-500">No service categories found.</td>
             </tr>
 
             <tr
@@ -92,6 +93,7 @@ usePolling(() => {
                 {{ category.avg_service_seconds ? (category.avg_service_seconds / 60).toFixed(1) : '—' }}
               </td>
               <td class="py-3 px-4 text-gray-700">{{ category.max_queues_per_day || '—' }}</td>
+              <td class="py-3 px-4 text-gray-700">{{ category.regulars_per_priority_cycle ?? 1 }} regular : 1 priority</td>
               <td class="py-3 px-4">
                 <div class="flex gap-2">
                   <Link

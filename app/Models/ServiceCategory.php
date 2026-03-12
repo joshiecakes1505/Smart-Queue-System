@@ -15,6 +15,13 @@ class ServiceCategory extends Model
         'description',
         'max_queues_per_day',
         'avg_service_seconds',
+        'regulars_per_priority_cycle',
+    ];
+
+    protected $casts = [
+        'max_queues_per_day' => 'integer',
+        'avg_service_seconds' => 'integer',
+        'regulars_per_priority_cycle' => 'integer',
     ];
 
     public function queues()
