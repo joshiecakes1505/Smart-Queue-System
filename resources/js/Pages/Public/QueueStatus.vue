@@ -84,7 +84,12 @@ const fetchQueueData = async () => {
     const response = await fetch(window.route('api.queue.status', { queue_number: props.queue_number }))
 
     if (!response.ok) {
-      error.value = 'Queue not found'
+      if (response.status === 410) {
+        const payload = await response.json().catch(() => ({}))
+        error.value = payload?.error || 'This queue link has expired.'
+      } else {
+        error.value = 'Queue not found'
+      }
       queueData.value = null
       return
     }

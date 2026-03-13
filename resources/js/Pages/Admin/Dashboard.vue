@@ -106,6 +106,13 @@ usePolling(() => {
               <span class="font-semibold">View Display Board</span>
               <p class="text-sm opacity-75">Public TV/monitor display</p>
             </Link>
+            <a
+              :href="route('admin.backups.download-latest')"
+              class="block px-4 py-3 border-2 border-green-600 text-green-700 rounded-lg hover:bg-green-600 hover:text-white transition"
+            >
+              <span class="font-semibold">Download Latest Backup</span>
+              <p class="text-sm opacity-75">Admin-only backup archive download</p>
+            </a>
           </div>
         </div>
       </div>

@@ -19,6 +19,7 @@ Route::get('login', [AuthenticatedSessionController::class, 'create'])
     ->name('login');
 
 Route::post('login', [AuthenticatedSessionController::class, 'store'])
+    ->middleware('throttle:5,1')
     ->name('login.store');
 
 Route::middleware('auth:admin,frontdesk,cashier,web')->group(function () {
