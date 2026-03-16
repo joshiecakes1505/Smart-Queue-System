@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Queue;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\URL;
 
 class QRCodeController extends Controller
 {
@@ -17,7 +18,7 @@ class QRCodeController extends Controller
         $queue = Queue::where('queue_number', $queueNumber)->firstOrFail();
         
         // Generate QR code URL pointing to public queue status page
-        $qrUrl = route('public.queue.show', ['queue_number' => $queueNumber]);
+        $qrUrl = URL::signedRoute('public.queue.show', ['queue_number' => $queueNumber]);
         
         // Use external QR API for MVP (qr-server.com)
         // Later: replace with local QR generation using bacon/bacon-qr-code or similar
@@ -33,7 +34,7 @@ class QRCodeController extends Controller
     {
         Queue::where('queue_number', $queueNumber)->firstOrFail();
         
-        $qrUrl = route('public.queue.show', ['queue_number' => $queueNumber]);
+        $qrUrl = URL::signedRoute('public.queue.show', ['queue_number' => $queueNumber]);
         $qrImageUrl = "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=" . urlencode($qrUrl);
         
         return response()->json([

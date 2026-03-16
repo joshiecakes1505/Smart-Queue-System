@@ -137,7 +137,28 @@ class UserController extends Controller
 
     public function destroy(User $user)
     {
+        if (auth('admin')->id() === $user->id) {
+            return back()->withErrors([
+                'user' => 'You cannot delete your own account from this panel.',
+            ]);
+        }
+
+        $isAdmin = $user->role()->where('name', 'admin')->exists();
+
+        if ($isAdmin) {
+            $adminCount = User::query()
+                ->whereHas('role', fn ($q) => $q->where('name', 'admin'))
+                ->count();
+
+            if ($adminCount <= 1) {
+                return back()->withErrors([
+                    'user' => 'Cannot delete the last admin account.',
+                ]);
+            }
+        }
+
         $user->delete();
+
         return redirect()->route('admin.users.index')->with('success', 'User deleted.');
     }
 

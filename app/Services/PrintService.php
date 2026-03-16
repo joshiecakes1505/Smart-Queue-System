@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Queue;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\URL;
 
 class PrintService
 {
@@ -19,7 +20,7 @@ class PrintService
             'queue_number' => $queue->queue_number,
             'service_name' => $queue->serviceCategory?->name ?? 'N/A',
             'created_at' => now()->format('Y-m-d h:i A'),
-            'qr_code' => route('public.queue.show', ['queue_number' => $queue->queue_number]),
+            'qr_code' => URL::signedRoute('public.queue.show', ['queue_number' => $queue->queue_number]),
         ];
 
         try {

@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { useForm, usePage, router } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { usePolling } from '@/Composables/usePolling';
 
 const props = defineProps({
@@ -25,6 +25,7 @@ const props = defineProps({
 
 const page = usePage();
 const queueNumber = computed(() => page.props.flash?.queueNumber || null);
+const printingQueueId = ref(null);
 
 const form = useForm({
     client_name: '',
@@ -79,6 +80,20 @@ const serviceCategoryLabel = (queue) => {
     }
 
     return queue.service_category?.name || 'N/A';
+};
+
+const goToPrint = (queueId) => {
+    if (printingQueueId.value !== null) {
+        return;
+    }
+
+    printingQueueId.value = queueId;
+
+    router.visit(route('frontdesk.queues.print', queueId), {
+        onFinish: () => {
+            printingQueueId.value = null;
+        },
+    });
 };
 
 usePolling(() => {
@@ -240,9 +255,21 @@ usePolling(() => {
                     <div class="flex justify-stretch sm:justify-end">
                         <button
                             type="submit"
-                            class="w-full sm:w-auto bg-[#FFC107] hover:bg-[#FFB300] text-[#800000] px-6 py-3 rounded-lg font-semibold transition disabled:opacity-50"
+                            class="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-[#FFC107] hover:bg-[#FFB300] text-[#800000] px-6 py-3 rounded-lg font-semibold transition disabled:opacity-50"
                             :disabled="form.processing"
                         >
+                            <svg v-if="form.processing" width="20" height="20" viewBox="0 0 38 38" aria-hidden="true">
+                                <g transform="translate(19 19)">
+                                    <g transform="rotate(0)"><circle cx="0" cy="12" r="3" fill="#800000" opacity="0.125"><animate attributeName="opacity" from="0.125" to="0.125" dur="1.2s" begin="0s" repeatCount="indefinite" keyTimes="0;1" values="1;0.125" /></circle></g>
+                                    <g transform="rotate(45)"><circle cx="0" cy="12" r="3" fill="#800000" opacity="0.25"><animate attributeName="opacity" from="0.25" to="0.25" dur="1.2s" begin="0.15s" repeatCount="indefinite" keyTimes="0;1" values="1;0.25" /></circle></g>
+                                    <g transform="rotate(90)"><circle cx="0" cy="12" r="3" fill="#800000" opacity="0.375"><animate attributeName="opacity" from="0.375" to="0.375" dur="1.2s" begin="0.3s" repeatCount="indefinite" keyTimes="0;1" values="1;0.375" /></circle></g>
+                                    <g transform="rotate(135)"><circle cx="0" cy="12" r="3" fill="#800000" opacity="0.5"><animate attributeName="opacity" from="0.5" to="0.5" dur="1.2s" begin="0.45s" repeatCount="indefinite" keyTimes="0;1" values="1;0.5" /></circle></g>
+                                    <g transform="rotate(180)"><circle cx="0" cy="12" r="3" fill="#800000" opacity="0.625"><animate attributeName="opacity" from="0.625" to="0.625" dur="1.2s" begin="0.6s" repeatCount="indefinite" keyTimes="0;1" values="1;0.625" /></circle></g>
+                                    <g transform="rotate(225)"><circle cx="0" cy="12" r="3" fill="#800000" opacity="0.75"><animate attributeName="opacity" from="0.75" to="0.75" dur="1.2s" begin="0.75s" repeatCount="indefinite" keyTimes="0;1" values="1;0.75" /></circle></g>
+                                    <g transform="rotate(270)"><circle cx="0" cy="12" r="3" fill="#800000" opacity="0.875"><animate attributeName="opacity" from="0.875" to="0.875" dur="1.2s" begin="0.9s" repeatCount="indefinite" keyTimes="0;1" values="1;0.875" /></circle></g>
+                                    <g transform="rotate(315)"><circle cx="0" cy="12" r="3" fill="#800000" opacity="1"><animate attributeName="opacity" from="1" to="1" dur="1.2s" begin="1.05s" repeatCount="indefinite" keyTimes="0;1" values="1;1" /></circle></g>
+                                </g>
+                            </svg>
                             <span v-if="form.processing">Generating...</span>
                             <span v-else>Generate Queue Number</span>
                         </button>
@@ -275,7 +302,8 @@ usePolling(() => {
                         v-for="queue in waitingQueues"
                         :key="queue.id"
                         class="rounded-lg border border-gray-200 p-3 bg-gray-50 cursor-pointer"
-                        @click="router.visit(route('frontdesk.queues.print', queue.id))"
+                        :class="printingQueueId === queue.id ? 'opacity-70 pointer-events-none' : ''"
+                        @click="goToPrint(queue.id)"
                     >
                         <div class="flex items-start justify-between gap-3">
                             <div>
@@ -289,6 +317,21 @@ usePolling(() => {
                         <div class="mt-2 text-sm text-gray-700">
                             <p><span class="text-gray-500">Category:</span> {{ serviceCategoryLabel(queue) }}</p>
                             <p><span class="text-gray-500">Time:</span> {{ formatTime(queue.created_at) }}</p>
+                            <p v-if="printingQueueId === queue.id" class="mt-2 inline-flex items-center gap-2 text-[#800000] text-xs font-medium">
+                                <svg width="16" height="16" viewBox="0 0 38 38" aria-hidden="true">
+                                    <g transform="translate(19 19)">
+                                        <g transform="rotate(0)"><circle cx="0" cy="12" r="3" fill="#800000" opacity="0.125"><animate attributeName="opacity" from="0.125" to="0.125" dur="1.2s" begin="0s" repeatCount="indefinite" keyTimes="0;1" values="1;0.125" /></circle></g>
+                                        <g transform="rotate(45)"><circle cx="0" cy="12" r="3" fill="#800000" opacity="0.25"><animate attributeName="opacity" from="0.25" to="0.25" dur="1.2s" begin="0.15s" repeatCount="indefinite" keyTimes="0;1" values="1;0.25" /></circle></g>
+                                        <g transform="rotate(90)"><circle cx="0" cy="12" r="3" fill="#800000" opacity="0.375"><animate attributeName="opacity" from="0.375" to="0.375" dur="1.2s" begin="0.3s" repeatCount="indefinite" keyTimes="0;1" values="1;0.375" /></circle></g>
+                                        <g transform="rotate(135)"><circle cx="0" cy="12" r="3" fill="#800000" opacity="0.5"><animate attributeName="opacity" from="0.5" to="0.5" dur="1.2s" begin="0.45s" repeatCount="indefinite" keyTimes="0;1" values="1;0.5" /></circle></g>
+                                        <g transform="rotate(180)"><circle cx="0" cy="12" r="3" fill="#800000" opacity="0.625"><animate attributeName="opacity" from="0.625" to="0.625" dur="1.2s" begin="0.6s" repeatCount="indefinite" keyTimes="0;1" values="1;0.625" /></circle></g>
+                                        <g transform="rotate(225)"><circle cx="0" cy="12" r="3" fill="#800000" opacity="0.75"><animate attributeName="opacity" from="0.75" to="0.75" dur="1.2s" begin="0.75s" repeatCount="indefinite" keyTimes="0;1" values="1;0.75" /></circle></g>
+                                        <g transform="rotate(270)"><circle cx="0" cy="12" r="3" fill="#800000" opacity="0.875"><animate attributeName="opacity" from="0.875" to="0.875" dur="1.2s" begin="0.9s" repeatCount="indefinite" keyTimes="0;1" values="1;0.875" /></circle></g>
+                                        <g transform="rotate(315)"><circle cx="0" cy="12" r="3" fill="#800000" opacity="1"><animate attributeName="opacity" from="1" to="1" dur="1.2s" begin="1.05s" repeatCount="indefinite" keyTimes="0;1" values="1;1" /></circle></g>
+                                    </g>
+                                </svg>
+                                Opening print page...
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -308,7 +351,8 @@ usePolling(() => {
                                 v-for="queue in waitingQueues"
                                 :key="queue.id"
                                 class="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
-                                @click="router.visit(route('frontdesk.queues.print', queue.id))"
+                                :class="printingQueueId === queue.id ? 'opacity-70 pointer-events-none' : ''"
+                                @click="goToPrint(queue.id)"
                             >
                                 <td class="py-3 px-3 sm:px-4 font-semibold" :class="queueNumberClass(queue.client_type)">{{ queue.queue_number }}</td>
                                 <td class="py-3 px-3 sm:px-4">{{ serviceCategoryLabel(queue) }}</td>
@@ -316,6 +360,21 @@ usePolling(() => {
                                     <span class="px-3 py-1 rounded-full text-sm" :class="queueChipClass(queue.client_type)">
                                         Waiting
                                     </span>
+                                    <p v-if="printingQueueId === queue.id" class="mt-2 inline-flex items-center gap-2 text-[#800000] text-xs font-medium">
+                                        <svg width="16" height="16" viewBox="0 0 38 38" aria-hidden="true">
+                                            <g transform="translate(19 19)">
+                                                <g transform="rotate(0)"><circle cx="0" cy="12" r="3" fill="#800000" opacity="0.125"><animate attributeName="opacity" from="0.125" to="0.125" dur="1.2s" begin="0s" repeatCount="indefinite" keyTimes="0;1" values="1;0.125" /></circle></g>
+                                                <g transform="rotate(45)"><circle cx="0" cy="12" r="3" fill="#800000" opacity="0.25"><animate attributeName="opacity" from="0.25" to="0.25" dur="1.2s" begin="0.15s" repeatCount="indefinite" keyTimes="0;1" values="1;0.25" /></circle></g>
+                                                <g transform="rotate(90)"><circle cx="0" cy="12" r="3" fill="#800000" opacity="0.375"><animate attributeName="opacity" from="0.375" to="0.375" dur="1.2s" begin="0.3s" repeatCount="indefinite" keyTimes="0;1" values="1;0.375" /></circle></g>
+                                                <g transform="rotate(135)"><circle cx="0" cy="12" r="3" fill="#800000" opacity="0.5"><animate attributeName="opacity" from="0.5" to="0.5" dur="1.2s" begin="0.45s" repeatCount="indefinite" keyTimes="0;1" values="1;0.5" /></circle></g>
+                                                <g transform="rotate(180)"><circle cx="0" cy="12" r="3" fill="#800000" opacity="0.625"><animate attributeName="opacity" from="0.625" to="0.625" dur="1.2s" begin="0.6s" repeatCount="indefinite" keyTimes="0;1" values="1;0.625" /></circle></g>
+                                                <g transform="rotate(225)"><circle cx="0" cy="12" r="3" fill="#800000" opacity="0.75"><animate attributeName="opacity" from="0.75" to="0.75" dur="1.2s" begin="0.75s" repeatCount="indefinite" keyTimes="0;1" values="1;0.75" /></circle></g>
+                                                <g transform="rotate(270)"><circle cx="0" cy="12" r="3" fill="#800000" opacity="0.875"><animate attributeName="opacity" from="0.875" to="0.875" dur="1.2s" begin="0.9s" repeatCount="indefinite" keyTimes="0;1" values="1;0.875" /></circle></g>
+                                                <g transform="rotate(315)"><circle cx="0" cy="12" r="3" fill="#800000" opacity="1"><animate attributeName="opacity" from="1" to="1" dur="1.2s" begin="1.05s" repeatCount="indefinite" keyTimes="0;1" values="1;1" /></circle></g>
+                                            </g>
+                                        </svg>
+                                        Opening print page...
+                                    </p>
                                 </td>
                                 <td class="py-3 px-3 sm:px-4 text-gray-600">{{ formatTime(queue.created_at) }}</td>
                             </tr>

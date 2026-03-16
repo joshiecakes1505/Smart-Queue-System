@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Schedule;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -127,3 +128,8 @@ Artisan::command('deploy:check-assets', function () {
 
     return 0;
 })->purpose('Validate Vite manifest and deployed build assets');
+
+Schedule::command('backup:run --only-db')->dailyAt('01:00')->withoutOverlapping();
+Schedule::command('backup:run --only-files')->dailyAt('01:10')->withoutOverlapping();
+Schedule::command('backup:clean')->dailyAt('01:30')->withoutOverlapping();
+Schedule::command('backup:monitor')->dailyAt('01:40')->withoutOverlapping();

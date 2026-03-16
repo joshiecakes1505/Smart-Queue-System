@@ -31,6 +31,7 @@ const selectedCashierByWindow = reactive(
 );
 
 const processingWindowId = ref(null);
+const deletingUserId = ref(null);
 const message = ref('');
 const swal = inject('$swal');
 
@@ -67,6 +68,51 @@ const assignCashier = (windowId) => {
 };
 
 const roleLabel = (user) => user?.role?.name || 'n/a';
+
+const deleteUser = async (user) => {
+  if (user.id === props.authUserId) {
+    return;
+  }
+
+  const confirmation = await swal?.fire({
+    icon: 'warning',
+    title: 'Delete this account?',
+    text: `This action will permanently delete ${user.name}'s account.`,
+    showCancelButton: true,
+    confirmButtonText: 'Yes, delete account',
+    cancelButtonText: 'Cancel',
+    confirmButtonColor: '#b91c1c',
+    cancelButtonColor: '#6b7280',
+    reverseButtons: true,
+  });
+
+  if (confirmation && !confirmation.isConfirmed) {
+    return;
+  }
+
+  deletingUserId.value = user.id;
+
+  router.delete(route('admin.users.destroy', user.id), {
+    preserveScroll: true,
+    onSuccess: () => {
+      swal?.fire({
+        icon: 'success',
+        title: 'User deleted',
+        text: 'The user account has been removed.',
+      });
+    },
+    onError: (errors) => {
+      swal?.fire({
+        icon: 'error',
+        title: 'Delete failed',
+        text: errors?.user || 'Unable to delete this account right now.',
+      });
+    },
+    onFinish: () => {
+      deletingUserId.value = null;
+    },
+  });
+};
 
 usePolling(() => {
   return router.reload({
@@ -117,6 +163,16 @@ usePolling(() => {
                     >
                       Edit
                     </Link>
+                    <button
+                      v-if="user.id !== authUserId"
+                      type="button"
+                      :disabled="deletingUserId === user.id"
+                      class="inline-flex items-center rounded-lg border border-red-600 px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-600 hover:text-white disabled:opacity-50"
+                      @click="deleteUser(user)"
+                    >
+                      <span v-if="deletingUserId === user.id">Deleting...</span>
+                      <span v-else>Delete</span>
+                    </button>
                     <span
                       v-if="user.id === authUserId"
                       class="text-xs font-medium uppercase tracking-wide text-gray-400"

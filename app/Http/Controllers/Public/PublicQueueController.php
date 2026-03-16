@@ -13,6 +13,8 @@ use Inertia\Inertia;
 
 class PublicQueueController extends Controller
 {
+    private const COMPLETED_QUEUE_LINK_EXPIRY_MINUTES = 5;
+
     public function __construct(private readonly QueueService $queueService)
     {
     }
@@ -87,6 +89,16 @@ class PublicQueueController extends Controller
 
         if (!$queue) {
             return response()->json(['error' => 'Queue not found'], 404);
+        }
+
+        if (
+            $queue->status === Queue::STATUS_COMPLETED
+            && $queue->end_time
+            && $queue->end_time->lte(now()->subMinutes(self::COMPLETED_QUEUE_LINK_EXPIRY_MINUTES))
+        ) {
+            return response()->json([
+                'error' => 'This queue link has expired 5 minutes after completion.',
+            ], 410);
         }
 
         $position = null;
