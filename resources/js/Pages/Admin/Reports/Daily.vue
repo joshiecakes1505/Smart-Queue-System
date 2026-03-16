@@ -13,6 +13,8 @@ const props = defineProps({
 
 const selectedDate = ref(props.metrics.selected_date);
 const selectedPeriod = ref(props.metrics.selected_period || 'daily');
+const isApplyingFilter = ref(false);
+const isExportingPdf = ref(false);
 
 const maxWeekdayTrendCount = computed(() => {
   const counts = props.metrics.weekday_trend?.map((row) => row.count) || [];
@@ -20,21 +22,41 @@ const maxWeekdayTrendCount = computed(() => {
 });
 
 const applyDateFilter = () => {
+  if (isApplyingFilter.value) {
+    return;
+  }
+
+  isApplyingFilter.value = true;
+
   router.get(route('admin.reports.daily'), {
     date: selectedDate.value,
     period: selectedPeriod.value,
   }, {
     preserveState: true,
     replace: true,
+    onFinish: () => {
+      isApplyingFilter.value = false;
+    },
   });
 };
 
-const printReport = () => {
-  const printUrl = route('admin.reports.daily.print', {
+const exportPdfReport = () => {
+  if (isExportingPdf.value) {
+    return;
+  }
+
+  isExportingPdf.value = true;
+
+  const exportUrl = route('admin.reports.daily.pdf', {
     date: selectedDate.value,
     period: selectedPeriod.value,
   });
-  window.open(printUrl, '_blank');
+
+  window.open(exportUrl, '_blank');
+
+  window.setTimeout(() => {
+    isExportingPdf.value = false;
+  }, 900);
 };
 
 const statusLabel = (status) => {
@@ -103,15 +125,41 @@ usePolling(() => {
             </div>
             <button
               @click="applyDateFilter"
-              class="bg-[#FFC107] hover:bg-[#FFB300] text-[#800000] px-4 py-2 rounded-lg font-semibold transition"
+              :disabled="isApplyingFilter"
+              class="inline-flex items-center gap-2 bg-[#FFC107] hover:bg-[#FFB300] text-[#800000] px-4 py-2 rounded-lg font-semibold transition disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Apply
+              <svg v-if="isApplyingFilter" width="16" height="16" viewBox="0 0 38 38" aria-hidden="true">
+                <g transform="translate(19 19)">
+                  <g transform="rotate(0)"><circle cx="0" cy="12" r="3" fill="#800000" opacity="0.125"><animate attributeName="opacity" from="0.125" to="0.125" dur="1.2s" begin="0s" repeatCount="indefinite" keyTimes="0;1" values="1;0.125" /></circle></g>
+                  <g transform="rotate(45)"><circle cx="0" cy="12" r="3" fill="#800000" opacity="0.25"><animate attributeName="opacity" from="0.25" to="0.25" dur="1.2s" begin="0.15s" repeatCount="indefinite" keyTimes="0;1" values="1;0.25" /></circle></g>
+                  <g transform="rotate(90)"><circle cx="0" cy="12" r="3" fill="#800000" opacity="0.375"><animate attributeName="opacity" from="0.375" to="0.375" dur="1.2s" begin="0.3s" repeatCount="indefinite" keyTimes="0;1" values="1;0.375" /></circle></g>
+                  <g transform="rotate(135)"><circle cx="0" cy="12" r="3" fill="#800000" opacity="0.5"><animate attributeName="opacity" from="0.5" to="0.5" dur="1.2s" begin="0.45s" repeatCount="indefinite" keyTimes="0;1" values="1;0.5" /></circle></g>
+                  <g transform="rotate(180)"><circle cx="0" cy="12" r="3" fill="#800000" opacity="0.625"><animate attributeName="opacity" from="0.625" to="0.625" dur="1.2s" begin="0.6s" repeatCount="indefinite" keyTimes="0;1" values="1;0.625" /></circle></g>
+                  <g transform="rotate(225)"><circle cx="0" cy="12" r="3" fill="#800000" opacity="0.75"><animate attributeName="opacity" from="0.75" to="0.75" dur="1.2s" begin="0.75s" repeatCount="indefinite" keyTimes="0;1" values="1;0.75" /></circle></g>
+                  <g transform="rotate(270)"><circle cx="0" cy="12" r="3" fill="#800000" opacity="0.875"><animate attributeName="opacity" from="0.875" to="0.875" dur="1.2s" begin="0.9s" repeatCount="indefinite" keyTimes="0;1" values="1;0.875" /></circle></g>
+                  <g transform="rotate(315)"><circle cx="0" cy="12" r="3" fill="#800000" opacity="1"><animate attributeName="opacity" from="1" to="1" dur="1.2s" begin="1.05s" repeatCount="indefinite" keyTimes="0;1" values="1;1" /></circle></g>
+                </g>
+              </svg>
+              {{ isApplyingFilter ? 'Applying...' : 'Apply' }}
             </button>
             <button
-              @click="printReport"
-              class="bg-[#800000] hover:bg-[#6a0000] text-white px-4 py-2 rounded-lg font-semibold transition"
+              @click="exportPdfReport"
+              :disabled="isExportingPdf"
+              class="inline-flex items-center gap-2 bg-[#800000] hover:bg-[#6a0000] text-white px-4 py-2 rounded-lg font-semibold transition disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Print Report
+              <svg v-if="isExportingPdf" width="16" height="16" viewBox="0 0 38 38" aria-hidden="true">
+                <g transform="translate(19 19)">
+                  <g transform="rotate(0)"><circle cx="0" cy="12" r="3" fill="#ffffff" opacity="0.125"><animate attributeName="opacity" from="0.125" to="0.125" dur="1.2s" begin="0s" repeatCount="indefinite" keyTimes="0;1" values="1;0.125" /></circle></g>
+                  <g transform="rotate(45)"><circle cx="0" cy="12" r="3" fill="#ffffff" opacity="0.25"><animate attributeName="opacity" from="0.25" to="0.25" dur="1.2s" begin="0.15s" repeatCount="indefinite" keyTimes="0;1" values="1;0.25" /></circle></g>
+                  <g transform="rotate(90)"><circle cx="0" cy="12" r="3" fill="#ffffff" opacity="0.375"><animate attributeName="opacity" from="0.375" to="0.375" dur="1.2s" begin="0.3s" repeatCount="indefinite" keyTimes="0;1" values="1;0.375" /></circle></g>
+                  <g transform="rotate(135)"><circle cx="0" cy="12" r="3" fill="#ffffff" opacity="0.5"><animate attributeName="opacity" from="0.5" to="0.5" dur="1.2s" begin="0.45s" repeatCount="indefinite" keyTimes="0;1" values="1;0.5" /></circle></g>
+                  <g transform="rotate(180)"><circle cx="0" cy="12" r="3" fill="#ffffff" opacity="0.625"><animate attributeName="opacity" from="0.625" to="0.625" dur="1.2s" begin="0.6s" repeatCount="indefinite" keyTimes="0;1" values="1;0.625" /></circle></g>
+                  <g transform="rotate(225)"><circle cx="0" cy="12" r="3" fill="#ffffff" opacity="0.75"><animate attributeName="opacity" from="0.75" to="0.75" dur="1.2s" begin="0.75s" repeatCount="indefinite" keyTimes="0;1" values="1;0.75" /></circle></g>
+                  <g transform="rotate(270)"><circle cx="0" cy="12" r="3" fill="#ffffff" opacity="0.875"><animate attributeName="opacity" from="0.875" to="0.875" dur="1.2s" begin="0.9s" repeatCount="indefinite" keyTimes="0;1" values="1;0.875" /></circle></g>
+                  <g transform="rotate(315)"><circle cx="0" cy="12" r="3" fill="#ffffff" opacity="1"><animate attributeName="opacity" from="1" to="1" dur="1.2s" begin="1.05s" repeatCount="indefinite" keyTimes="0;1" values="1;1" /></circle></g>
+                </g>
+              </svg>
+              {{ isExportingPdf ? 'Exporting...' : 'Export PDF' }}
             </button>
           </div>
         </div>

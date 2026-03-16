@@ -6,12 +6,13 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Throwable;
 
 class BackupController extends Controller
 {
-    public function downloadLatest(): StreamedResponse|RedirectResponse
+    public function downloadLatest(): StreamedResponse|BinaryFileResponse|RedirectResponse
     {
         $configuredDisks = config('backup.backup.destination.disks', ['local']);
         $diskName = (string) (Arr::first(is_array($configuredDisks) ? $configuredDisks : []) ?? 'local');
@@ -57,6 +58,17 @@ class BackupController extends Controller
         }
 
         $downloadName = basename($latestBackupPath);
+
+        // Prefer direct file download for local disk to avoid stream issues on Windows.
+        if (method_exists($disk, 'path')) {
+            $absolutePath = $disk->path($latestBackupPath);
+
+            if (is_string($absolutePath) && is_file($absolutePath) && is_readable($absolutePath)) {
+                return response()->download($absolutePath, $downloadName, [
+                    'Content-Type' => 'application/zip',
+                ]);
+            }
+        }
 
         return response()->streamDownload(function () use ($stream): void {
             fpassthru($stream);

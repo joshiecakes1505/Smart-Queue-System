@@ -8,6 +8,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Inertia\Inertia;
+use TCPDF;
 
 class ReportController extends Controller
 {
@@ -31,13 +32,33 @@ class ReportController extends Controller
         ]);
     }
 
-    public function dailyPrint(Request $request)
+    public function dailyPdf(Request $request)
     {
         $selectedDate = $this->resolveSelectedDate($request->input('date'));
         $selectedPeriod = $this->resolveSelectedPeriod($request->input('period'));
+        $metrics = $this->buildReportMetrics($selectedDate, $selectedPeriod);
 
-        return response()->view('admin.reports.daily-print', [
-            'metrics' => $this->buildReportMetrics($selectedDate, $selectedPeriod),
+        $html = view('admin.reports.daily-print', [
+            'metrics' => $metrics,
+        ])->render();
+
+        $pdf = new TCPDF('P', 'mm', 'A4', true, 'UTF-8', false);
+        $pdf->SetCreator((string) config('app.name'));
+        $pdf->SetAuthor((string) config('app.school_name', config('app.name')));
+        $pdf->SetTitle('Queue Report - '.$metrics['period_label']);
+        $pdf->setPrintHeader(false);
+        $pdf->setPrintFooter(false);
+        $pdf->SetMargins(10, 10, 10);
+        $pdf->SetAutoPageBreak(true, 10);
+        $pdf->AddPage();
+        $pdf->writeHTML($html, true, false, true, false, '');
+
+        $filename = sprintf('queue-report-%s-%s.pdf', $selectedPeriod, $selectedDate);
+        $content = $pdf->Output($filename, 'S');
+
+        return response($content, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ]);
     }
 

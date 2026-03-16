@@ -59,7 +59,7 @@ Route::middleware(['auth:admin', 'role:admin'])->prefix('admin')->name('admin.')
     Route::resource('users', AdminUserController::class)->except(['show']);
     Route::resource('service-categories', AdminServiceCategoryController::class)->except(['show']);
     Route::get('reports/daily', [AdminReportController::class, 'daily'])->name('reports.daily');
-    Route::get('reports/daily/print', [AdminReportController::class, 'dailyPrint'])->name('reports.daily.print');
+    Route::get('reports/daily/pdf', [AdminReportController::class, 'dailyPdf'])->name('reports.daily.pdf');
 });
 
 // Frontdesk routes (register queue)
