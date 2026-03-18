@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Public;
 
+use App\Events\DisplayQueuesUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\CashierWindow;
 use App\Models\Queue;
@@ -181,6 +182,8 @@ class PublicQueueController extends Controller
                 'reason' => 'client_cancelled',
             ],
         ]);
+
+        DisplayQueuesUpdated::dispatch('cancelled', $queue->id);
 
         return response()->json([
             'ok' => true,

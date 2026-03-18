@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Events\DisplayQueuesUpdated;
 use App\Models\Queue;
 use App\Models\QueueCounter;
 use App\Models\QueueLog;
@@ -25,7 +26,7 @@ class QueueService
      */
     public function createQueue(array $data): Queue
     {
-        return DB::transaction(function () use ($data) {
+        $queue = DB::transaction(function () use ($data) {
             $date = now()->toDateString();
             $serviceCategoryId = $data['service_category_id'] ?? null;
 
@@ -66,6 +67,10 @@ class QueueService
             // initial creation log is optional; queue_logs enum currently contains called/skipped/recalled/completed
             return $queue;
         });
+
+        $this->broadcastDisplayRefresh($queue, 'created');
+
+        return $queue;
     }
 
     private function nextAvailableQueueNumber(QueueCounter $counter, string $prefix): string
@@ -86,7 +91,7 @@ class QueueService
      */
     public function callNext(int $windowId, ?int $serviceCategoryId = null, ?int $performedBy = null): ?Queue
     {
-        return DB::transaction(function () use ($windowId, $serviceCategoryId, $performedBy) {
+        $next = DB::transaction(function () use ($windowId, $serviceCategoryId, $performedBy) {
             $activeQueue = Queue::where('cashier_window_id', $windowId)
                 ->where('status', Queue::STATUS_CALLED)
                 ->orderBy('start_time', 'desc')
@@ -117,6 +122,12 @@ class QueueService
 
             return $next;
         });
+
+        if ($next) {
+            $this->broadcastDisplayRefresh($next, 'called');
+        }
+
+        return $next;
     }
 
     public function skip(int $queueId, ?int $performedBy = null): ?Queue
@@ -140,6 +151,8 @@ class QueueService
             'performed_by' => $performedBy,
         ]);
 
+        $this->broadcastDisplayRefresh($queue, 'skipped');
+
         return $queue;
     }
 
@@ -155,6 +168,8 @@ class QueueService
             'action' => 'recalled',
             'performed_by' => $performedBy,
         ]);
+
+        $this->broadcastDisplayRefresh($queue, 'recalled');
 
         return $queue;
     }
@@ -184,6 +199,8 @@ class QueueService
             ],
         ]);
 
+        $this->broadcastDisplayRefresh($queue, 'completed');
+
         return $queue;
     }
 
@@ -212,6 +229,8 @@ class QueueService
             'action' => 'reinstated',
             'performed_by' => $performedBy,
         ]);
+
+        $this->broadcastDisplayRefresh($queue, 'reinstated');
 
         return $queue;
     }
@@ -245,5 +264,10 @@ class QueueService
         }
 
         return $counter;
+    }
+
+    private function broadcastDisplayRefresh(?Queue $queue = null, ?string $reason = null): void
+    {
+        DisplayQueuesUpdated::dispatch($reason, $queue?->id);
     }
 }

@@ -1,5 +1,5 @@
 <script setup>
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { usePolling } from '@/Composables/usePolling'
 import { Head } from '@inertiajs/vue3'
 import {
@@ -9,13 +9,31 @@ import {
 } from '@/Services/QueueAnnouncement'
 
 const data = ref({ windows: [], next_queues: [], timestamp: null })
-const refreshIntervalMs = 1000
+const refreshIntervalMs = 5000
 const isFullscreen = ref(false)
 const hasAnnouncementBaseline = ref(false)
 const lastAnnouncedByWindow = ref({})
+const currentClock = ref(new Date())
+const DISPLAY_CHANNEL_NAME = 'display.queues'
+let displayChannel = null
+let clockInterval = null
 const ANNOUNCEMENT_STORAGE_KEY = 'display-board:last-announced'
 const schoolLogoUrl = document.querySelector('meta[name="app-logo-url"]')?.getAttribute('content')
   || `${window.location.origin}/images/school-logo.png`
+const idleVideoUrl = `${window.location.origin}/videos/BEC_BACKGROUND_VID.mp4`
+
+const hasAnyCurrentlyServedQueue = computed(() => {
+  return Array.isArray(data.value.windows)
+    && data.value.windows.some((windowData) => !!windowData?.current?.queue_number)
+})
+
+const hasAnyWaitingQueue = computed(() => {
+  return Array.isArray(data.value.next_queues) && data.value.next_queues.length > 0
+})
+
+const isSystemIdle = computed(() => {
+  return !hasAnyCurrentlyServedQueue.value && !hasAnyWaitingQueue.value
+})
 
 const getWindowAnnouncementKey = (windowData) => {
   if (windowData?.id) return `${windowData.id}`
@@ -97,6 +115,9 @@ const fetchData = async () => {
 
     const latestData = await res.json()
     data.value = latestData
+    if (latestData?.timestamp) {
+      currentClock.value = new Date(latestData.timestamp)
+    }
     announceQueueUpdates(latestData?.windows || [])
   } catch (error) {
     console.error('Failed to fetch display data:', error)
@@ -104,6 +125,23 @@ const fetchData = async () => {
 }
 
 usePolling(fetchData, refreshIntervalMs)
+
+const connectDisplayRealtime = () => {
+  if (!window.Echo) return
+
+  displayChannel = window.Echo.channel(DISPLAY_CHANNEL_NAME)
+
+  displayChannel.listen('.queues.updated', () => {
+    fetchData()
+  })
+}
+
+const disconnectDisplayRealtime = () => {
+  if (!window.Echo || !displayChannel) return
+
+  window.Echo.leaveChannel(DISPLAY_CHANNEL_NAME)
+  displayChannel = null
+}
 
 const formatTime = (timestamp) => {
   if (!timestamp) return '—';
@@ -113,6 +151,21 @@ const formatTime = (timestamp) => {
     second: '2-digit',
   });
 };
+
+const startClock = () => {
+  if (clockInterval) return
+
+  clockInterval = setInterval(() => {
+    currentClock.value = new Date()
+  }, 1000)
+}
+
+const stopClock = () => {
+  if (!clockInterval) return
+
+  clearInterval(clockInterval)
+  clockInterval = null
+}
 
 const syncFullscreenState = () => {
   isFullscreen.value = !!document.fullscreenElement
@@ -199,15 +252,19 @@ const windowSecondaryStatus = (windowData) => {
 onMounted(() => {
   syncFullscreenState()
   document.addEventListener('fullscreenchange', syncFullscreenState)
+  startClock()
+  connectDisplayRealtime()
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener('fullscreenchange', syncFullscreenState)
+  stopClock()
+  disconnectDisplayRealtime()
 })
 </script>
 
 <template>
-  <div class="min-h-screen bg-white">
+  <div class="min-h-screen bg-white flex flex-col">
     <Head title="Queue Display" />
     
     <!-- Maroon Header -->
@@ -229,7 +286,7 @@ onBeforeUnmount(() => {
           </div>
           <div class="text-left lg:text-right lg:mr-10">
             <p class="text-lg sm:text-xl text-yellow-200">Current Time</p>
-            <p class="mt-1 text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight">{{ formatTime(data.timestamp) }}</p>
+            <p class="mt-1 text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight">{{ formatTime(currentClock) }}</p>
           </div>
         </div>
       </div>
@@ -245,79 +302,97 @@ onBeforeUnmount(() => {
     </header>
 
     <!-- Main Content -->
-    <main class="container mx-auto px-4 sm:px-8 py-6 sm:py-8">
-      <!-- Windows Grid -->
-      <div class="mb-12">
-        <h2 class="text-2xl sm:text-3xl font-bold text-[#800000] mb-5">Now Serving</h2>
+    <main
+      class="flex-1"
+      :class="isSystemIdle ? 'w-full p-0' : 'container mx-auto px-4 sm:px-8 py-6 sm:py-8'"
+    >
+      <div v-if="isSystemIdle" class="h-full w-full overflow-hidden bg-black">
+        <video
+          :src="idleVideoUrl"
+          class="h-full w-full object-cover"
+          autoplay
+          muted
+          loop
+          playsinline
+        >
+          Your browser does not support the video tag.
+        </video>
+      </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
-          <div 
-            v-for="window in data.windows" 
-            :key="window.id"
-            class="bg-white border-4 border-[#800000] rounded-lg p-4 sm:p-6"
-          >
-            <!-- Window Name -->
-            <div class="bg-[#800000] text-white text-center py-2.5 rounded-lg mb-4">
-              <h3 class="text-2xl sm:text-3xl lg:text-4xl font-bold">{{ window.name }}</h3>
-            </div>
+      <template v-else>
+        <!-- Windows Grid -->
+        <div class="mb-12">
+          <h2 class="text-2xl sm:text-3xl font-bold text-[#800000] mb-5">Now Serving</h2>
 
-            <!-- Current Queue -->
-            <div class="text-center mb-3">
-              <p class="text-sm text-gray-600 mb-2">NOW SERVING</p>
-              <div
-                class="rounded-lg py-6 sm:py-7 lg:py-8"
-                :class="window.current ? queueTheme(window.current?.client_type).calledBg : 'bg-[#FFC107]'"
-              >
-                <p
-                  class="text-6xl sm:text-7xl lg:text-8xl font-bold leading-none"
-                  :class="window.current ? 'text-white' : 'text-[#800000]'"
+          <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
+            <div 
+              v-for="window in data.windows" 
+              :key="window.id"
+              class="bg-white border-4 border-[#800000] rounded-lg p-4 sm:p-6"
+            >
+              <!-- Window Name -->
+              <div class="bg-[#800000] text-white text-center py-2.5 rounded-lg mb-4">
+                <h3 class="text-2xl sm:text-3xl lg:text-4xl font-bold">{{ window.name }}</h3>
+              </div>
+
+              <!-- Current Queue -->
+              <div class="text-center mb-3">
+                <p class="text-sm text-gray-600 mb-2">NOW SERVING</p>
+                <div
+                  class="rounded-lg py-6 sm:py-7 lg:py-8"
+                  :class="window.current ? queueTheme(window.current?.client_type).calledBg : 'bg-[#FFC107]'"
                 >
-                  {{ window.current?.queue_number ?? '—' }}
-                </p>
+                  <p
+                    class="text-6xl sm:text-7xl lg:text-8xl font-bold leading-none"
+                    :class="window.current ? 'text-white' : 'text-[#800000]'"
+                  >
+                    {{ window.current?.queue_number ?? '—' }}
+                  </p>
+                </div>
+              </div>
+
+              <!-- Queue Details -->
+              <div class="text-center text-gray-700 space-y-1">
+                <p class="text-lg font-semibold" :class="isWindowClosed(window) ? 'text-gray-500' : 'text-gray-700'">{{ windowPrimaryStatus(window) }}</p>
+                <p class="text-sm text-gray-500">{{ windowSecondaryStatus(window) }}</p>
               </div>
             </div>
+          </div>
 
-            <!-- Queue Details -->
-            <div class="text-center text-gray-700 space-y-1">
-              <p class="text-lg font-semibold" :class="isWindowClosed(window) ? 'text-gray-500' : 'text-gray-700'">{{ windowPrimaryStatus(window) }}</p>
-              <p class="text-sm text-gray-500">{{ windowSecondaryStatus(window) }}</p>
+          <!-- No Windows Message -->
+          <div v-if="data.windows.length === 0" class="text-center py-12">
+            <p class="text-gray-500 text-xl">No active windows</p>
+          </div>
+        </div>
+
+        <!-- Next in Queue -->
+        <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-5 sm:p-6">
+          <h3 class="text-xl sm:text-2xl font-bold text-[#800000] mb-5 text-center">Next in Queue</h3>
+
+          <div v-if="data.next_queues.length > 0" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+            <div
+              v-for="(queue, idx) in data.next_queues.slice(0, 5)"
+              :key="queue.queue_number"
+              class="bg-white border-2 border-[#800000] rounded-lg p-4 sm:p-6 text-center"
+            >
+              <p class="text-xs text-gray-500 mb-2">Position {{ idx + 1 }}</p>
+              <p class="text-3xl sm:text-4xl font-bold leading-tight" :class="queueTheme(queue.client_type).numberText">{{ queue.queue_number }}</p>
+              <p class="text-sm text-gray-600 mt-2">{{ serviceCategoryLabel(queue) }}</p>
+              <p class="text-sm text-gray-500 mt-1">{{ clientTypeLabel(queue.client_type) }}</p>
             </div>
           </div>
-        </div>
 
-        <!-- No Windows Message -->
-        <div v-if="data.windows.length === 0" class="text-center py-12">
-          <p class="text-gray-500 text-xl">No active windows</p>
-        </div>
-      </div>
-
-      <!-- Next in Queue -->
-      <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-5 sm:p-6">
-        <h3 class="text-xl sm:text-2xl font-bold text-[#800000] mb-5 text-center">Next in Queue</h3>
-
-        <div v-if="data.next_queues.length > 0" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-          <div
-            v-for="(queue, idx) in data.next_queues.slice(0, 5)"
-            :key="queue.queue_number"
-            class="bg-white border-2 border-[#800000] rounded-lg p-4 sm:p-6 text-center"
-          >
-            <p class="text-xs text-gray-500 mb-2">Position {{ idx + 1 }}</p>
-            <p class="text-3xl sm:text-4xl font-bold leading-tight" :class="queueTheme(queue.client_type).numberText">{{ queue.queue_number }}</p>
-            <p class="text-sm text-gray-600 mt-2">{{ serviceCategoryLabel(queue) }}</p>
-            <p class="text-sm text-gray-500 mt-1">{{ clientTypeLabel(queue.client_type) }}</p>
+          <div v-else class="text-center py-8">
+            <p class="text-gray-500 text-lg">No queues waiting</p>
           </div>
         </div>
-
-        <div v-else class="text-center py-8">
-          <p class="text-gray-500 text-lg">No queues waiting</p>
-        </div>
-      </div>
+      </template>
     </main>
 
     <!-- Footer -->
-    <footer class="bg-gray-100 py-4 mt-12">
+    <footer v-if="!isSystemIdle" class="bg-gray-100 py-4 mt-12">
       <div class="container mx-auto px-4 sm:px-8 text-center">
-        <p class="text-sm text-gray-600">Auto-refreshing every 2 seconds</p>
+        <p class="text-sm text-gray-600">Auto-refresh fallback every 5 seconds</p>
       </div>
     </footer>
   </div>
