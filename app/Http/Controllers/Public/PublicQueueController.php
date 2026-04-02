@@ -183,7 +183,11 @@ class PublicQueueController extends Controller
             ],
         ]);
 
-        DisplayQueuesUpdated::dispatch('cancelled', $queue->id);
+        try {
+            DisplayQueuesUpdated::dispatch('cancelled', $queue->id);
+        } catch (\Throwable $e) {
+            report($e);
+        }
 
         return response()->json([
             'ok' => true,

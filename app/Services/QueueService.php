@@ -268,6 +268,10 @@ class QueueService
 
     private function broadcastDisplayRefresh(?Queue $queue = null, ?string $reason = null): void
     {
-        DisplayQueuesUpdated::dispatch($reason, $queue?->id);
+        try {
+            DisplayQueuesUpdated::dispatch($reason, $queue?->id);
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 }
