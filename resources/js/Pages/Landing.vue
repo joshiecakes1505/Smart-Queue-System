@@ -34,7 +34,9 @@ import { Link } from '@inertiajs/vue3';
                     >
                         Staff Login
                     </Link>
+
                 </div>
+
             </div>
         </div>
     </PublicLayout>

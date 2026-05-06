@@ -1,5 +1,6 @@
 <script setup>
 import { Head } from '@inertiajs/vue3';
+import ChatbotWidget from '@/Components/ChatbotWidget.vue';
 
 const schoolLogoUrl = document.querySelector('meta[name="app-logo-url"]')?.getAttribute('content')
     || `${window.location.origin}/images/school-logo.png`;
@@ -44,5 +45,9 @@ defineProps({
                 <p class="text-sm text-gray-600">© 2026 Batangas Eastern Colleges</p>
             </div>
         </footer>
+
+        <div class="sm:hidden">
+            <ChatbotWidget />
+        </div>
     </div>
 </template>

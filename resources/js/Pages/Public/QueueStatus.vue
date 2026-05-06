@@ -1,5 +1,7 @@
 <script setup>
 import { computed, inject, ref } from 'vue'
+import { Link } from '@inertiajs/vue3'
+import ChatbotWidget from '@/Components/ChatbotWidget.vue'
 import { usePolling } from '@/Composables/usePolling'
 
 const props = defineProps({ queue_number: String })
@@ -325,6 +327,10 @@ usePolling(fetchAll, 2000)
           </button>
         </div>
       </template>
+    </div>
+
+    <div class="sm:hidden">
+      <ChatbotWidget />
     </div>
   </div>
 </template>
