@@ -11,6 +11,7 @@ use App\Http\Controllers\Cashier\CashierController as CashierController;
 use App\Http\Controllers\Public\PublicQueueController as PublicQueueController;
 use App\Http\Controllers\Display\DisplayController as DisplayController;
 use App\Http\Controllers\Api\QRCodeController as QRCodeController;
+use App\Http\Controllers\ChatbotController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
@@ -102,4 +103,10 @@ Route::get('/display/data', [DisplayController::class, 'data'])->name('display.d
 // QR Code endpoints (public)
 Route::get('/qr/{queueNumber}', [QRCodeController::class, 'generate'])->name('qr.generate');
 Route::get('/qr/{queueNumber}/data', [QRCodeController::class, 'data'])->name('qr.data');
+
+// Chatbot routes (public)
+Route::get('/chatbot', [ChatbotController::class, 'index'])->name('chatbot.index');
+Route::post('/api/chatbot/message', [ChatbotController::class, 'sendMessage'])->name('api.chatbot.message');
+Route::get('/api/chatbot/faq-topics', [ChatbotController::class, 'getFaqTopics'])->name('api.chatbot.faq-topics');
+Route::get('/api/chatbot/faq/{topicId}', [ChatbotController::class, 'getFaqTopic'])->name('api.chatbot.faq-topic');
 

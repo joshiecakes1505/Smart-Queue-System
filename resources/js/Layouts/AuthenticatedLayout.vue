@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { usePage } from '@inertiajs/vue3';
+import ChatbotWidget from '@/Components/ChatbotWidget.vue';
 
 defineProps({
     title: {
@@ -103,5 +104,7 @@ const navigationLinks = computed(() => {
         <main class="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
             <slot />
         </main>
+
+        <ChatbotWidget v-if="roleName === 'admin'" />
     </div>
 </template>
