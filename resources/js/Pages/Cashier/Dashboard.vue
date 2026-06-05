@@ -488,187 +488,185 @@ onBeforeUnmount(() => {
             <p class="text-yellow-700 text-sm mt-2">Please contact an administrator.</p>
         </div>
 
-        <div v-else class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-            <div class="xl:col-span-2 space-y-6">
-                <!-- Section 1: Assigned Window Display -->
-                <div class="bg-white rounded-lg shadow-sm p-6">
-                    <h2 class="text-xl font-semibold text-[#800000] mb-2">Assigned Window</h2>
-                    <p class="text-4xl font-bold text-[#800000]">{{ window.name }}</p>
-                </div>
+        <div v-else class="space-y-6">
+            <!-- Section 1: Assigned Window Display -->
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <h2 class="text-xl font-semibold text-[#800000] mb-2">Assigned Window</h2>
+                <p class="text-4xl font-bold text-[#800000]">{{ window.name }}</p>
+            </div>
 
-                <!-- Section 2: Current Serving Queue -->
-                <div class="bg-white rounded-lg shadow-sm p-6">
-                    <h2 class="text-xl font-semibold text-[#800000] mb-4">Now Serving</h2>
+            <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)] gap-6 items-start">
+                <div class="space-y-6 min-w-0">
+                    <!-- Section 2: Current Serving Queue -->
+                    <div class="bg-white rounded-lg shadow-sm p-6">
+                        <h2 class="text-xl font-semibold text-[#800000] mb-4">Now Serving</h2>
 
-                    <div v-if="current" class="space-y-4">
-                        <div class="rounded-lg p-8 text-center" :class="queueTheme(current.client_type).panel">
-                            <p class="text-sm mb-2">Queue Number</p>
-                            <p class="text-6xl font-bold">{{ current.queue_number }}</p>
+                        <div v-if="current" class="space-y-4">
+                            <div class="rounded-lg p-8 text-center" :class="queueTheme(current.client_type).panel">
+                                <p class="text-sm mb-2">Queue Number</p>
+                                <p class="text-6xl font-bold">{{ current.queue_number }}</p>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-600">
+                                <p class="rounded-lg bg-gray-50 px-4 py-3"><span class="font-semibold text-gray-700">Service:</span> {{ serviceCategoryLabel(current) }}</p>
+                                <p class="rounded-lg bg-gray-50 px-4 py-3"><span class="font-semibold text-gray-700">Client:</span> {{ current.client_name || 'Walk-in' }}</p>
+                            </div>
                         </div>
-                        <div class="text-center text-gray-600">
-                            <p class="text-sm">Service: {{ serviceCategoryLabel(current) }}</p>
-                            <p class="text-sm">Client: {{ current.client_name || 'Walk-in' }}</p>
+
+                        <div v-else class="bg-gray-50 rounded-lg p-8 text-center">
+                            <p class="text-gray-500 text-lg">No active queue</p>
+                            <p class="text-gray-400 text-sm mt-2">Click "Call Next" to serve the next queue</p>
                         </div>
                     </div>
 
-                    <div v-else class="bg-gray-50 rounded-lg p-8 text-center">
-                        <p class="text-gray-500 text-lg">No active queue</p>
-                        <p class="text-gray-400 text-sm mt-2">Click "Call Next" to serve the next queue</p>
+                    <!-- Section 3: Queue Control Buttons -->
+                    <div class="bg-white rounded-lg shadow-sm p-6">
+                        <h2 class="text-xl font-semibold text-[#800000] mb-4">Queue Controls</h2>
+
+                        <div
+                            v-if="feedback.message"
+                            :class="feedbackClass(feedback.type)"
+                            class="mb-4 border rounded-lg px-4 py-3 text-sm"
+                        >
+                            {{ feedback.message }}
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+                            <button
+                                @click="callNext"
+                                :disabled="processing || !!current"
+                                class="bg-[#FFC107] hover:bg-[#FFB300] text-[#800000] px-6 py-4 rounded-lg font-semibold transition disabled:opacity-50 text-lg"
+                            >
+                                Call Next
+                            </button>
+
+                            <button
+                                @click="skip"
+                                :disabled="processing || !current"
+                                class="border-2 border-gray-500 hover:bg-gray-500 hover:text-white text-gray-600 px-6 py-4 rounded-lg font-semibold transition disabled:opacity-50"
+                            >
+                                Skip
+                            </button>
+
+                            <button
+                                @click="recall"
+                                :disabled="processing || !current"
+                                class="border-2 border-[#800000] hover:bg-[#800000] hover:text-white text-[#800000] px-6 py-4 rounded-lg font-semibold transition disabled:opacity-50"
+                            >
+                                Recall
+                            </button>
+
+                            <button
+                                @click="complete"
+                                :disabled="processing || !current"
+                                class="border-2 border-[#800000] hover:bg-[#800000] hover:text-white text-[#800000] px-6 py-4 rounded-lg font-semibold transition disabled:opacity-50"
+                            >
+                                Complete
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Section 3: Queue Control Buttons -->
-                <div class="bg-white rounded-lg shadow-sm p-6">
-                    <h2 class="text-xl font-semibold text-[#800000] mb-4">Queue Controls</h2>
+                <div class="space-y-6 min-w-0">
+                    <!-- Next 5 Queues Preview -->
+                    <div class="bg-white rounded-lg shadow-sm p-6">
+                        <h2 class="text-xl font-semibold text-[#800000] mb-4">Next in Queue</h2>
 
-                    <div
-                        v-if="feedback.message"
-                        :class="feedbackClass(feedback.type)"
-                        class="mb-4 border rounded-lg px-4 py-3 text-sm"
-                    >
-                        {{ feedback.message }}
+                        <div v-if="next.length > 0" class="grid grid-cols-2 gap-3">
+                            <div
+                                v-for="queue in next"
+                                :key="queue.id"
+                                class="bg-gray-50 rounded-lg p-4 text-center border"
+                                :class="queueTheme(queue.client_type).chip"
+                            >
+                                <p class="text-lg font-bold" :class="queueTheme(queue.client_type).number">{{ queue.queue_number }}</p>
+                                <p class="text-xs mt-1">{{ serviceCategoryLabel(queue) }}</p>
+                                <p class="text-xs mt-1 opacity-90">{{ clientTypeLabel(queue.client_type) }}</p>
+                            </div>
+                        </div>
+
+                        <div v-else class="text-center py-6 text-gray-500">
+                            No queues waiting
+                        </div>
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                        <!-- Call Next - Primary Action -->
-                        <button
-                            @click="callNext"
-                            :disabled="processing || !!current"
-                            class="bg-[#FFC107] hover:bg-[#FFB300] text-[#800000] px-6 py-4 rounded-lg font-semibold transition disabled:opacity-50 text-lg"
-                        >
-                            Call Next
-                        </button>
+                    <div class="bg-white rounded-lg shadow-sm p-6">
+                        <h2 class="text-xl font-semibold text-[#800000] mb-4">Skipped Queues (Eligible for Reinstatement)</h2>
 
-                        <!-- Skip -->
-                        <button
-                            @click="skip"
-                            :disabled="processing || !current"
-                            class="border-2 border-gray-500 hover:bg-gray-500 hover:text-white text-gray-600 px-6 py-4 rounded-lg font-semibold transition disabled:opacity-50"
-                        >
-                            Skip
-                        </button>
-
-                        <!-- Recall -->
-                        <button
-                            @click="recall"
-                            :disabled="processing || !current"
-                            class="border-2 border-[#800000] hover:bg-[#800000] hover:text-white text-[#800000] px-6 py-4 rounded-lg font-semibold transition disabled:opacity-50"
-                        >
-                            Recall
-                        </button>
-
-                        <!-- Complete -->
-                        <button
-                            @click="complete"
-                            :disabled="processing || !current"
-                            class="border-2 border-[#800000] hover:bg-[#800000] hover:text-white text-[#800000] px-6 py-4 rounded-lg font-semibold transition disabled:opacity-50"
-                        >
-                            Complete
-                        </button>
+                        <div class="overflow-x-auto">
+                            <table class="w-full min-w-[420px] xl:min-w-0">
+                                <thead>
+                                    <tr class="border-b border-gray-200">
+                                        <th class="text-left py-3 px-4 font-semibold text-gray-700">Queue Number</th>
+                                        <th class="text-left py-3 px-4 font-semibold text-gray-700">Service Category</th>
+                                        <th class="text-left py-3 px-4 font-semibold text-gray-700">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-if="skippedEligible.length === 0">
+                                        <td colspan="3" class="text-center py-8 text-gray-500">
+                                            No eligible skipped queues
+                                        </td>
+                                    </tr>
+                                    <tr
+                                        v-for="queue in skippedEligible"
+                                        :key="queue.id"
+                                        class="border-b border-gray-100 hover:bg-gray-50"
+                                    >
+                                        <td class="py-3 px-4 font-semibold" :class="queueTheme(queue.client_type).number">{{ queue.queue_number }}</td>
+                                        <td class="py-3 px-4">{{ serviceCategoryLabel(queue) }}</td>
+                                        <td class="py-3 px-4">
+                                            <button
+                                                @click="reinstate(queue)"
+                                                :disabled="processing || queue.skip_count >= 2 || queue.is_reinstated"
+                                                class="border-2 border-[#FFC107] hover:bg-[#FFC107] text-[#800000] px-4 py-2 rounded-lg font-semibold transition disabled:opacity-50"
+                                            >
+                                                Reinstate
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                </div>
 
-                <!-- Section 4: Recent Queue Logs -->
-                <div class="bg-white rounded-lg shadow-sm p-6">
-                    <h2 class="text-xl font-semibold text-[#800000] mb-4">Recent Activity</h2>
-
-                    <div class="overflow-x-auto">
-                        <table class="w-full">
-                            <thead>
-                                <tr class="border-b border-gray-200">
-                                    <th class="text-left py-3 px-4 font-semibold text-gray-700">Queue Number</th>
-                                    <th class="text-left py-3 px-4 font-semibold text-gray-700">Service</th>
-                                    <th class="text-left py-3 px-4 font-semibold text-gray-700">Status</th>
-                                    <th class="text-left py-3 px-4 font-semibold text-gray-700">Time</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-if="recentLogs.length === 0">
-                                    <td colspan="4" class="text-center py-8 text-gray-500">
-                                        No recent activity
-                                    </td>
-                                </tr>
-                                <tr
-                                    v-for="log in recentLogs"
-                                    :key="log.id"
-                                    class="border-b border-gray-100 hover:bg-gray-50"
-                                >
-                                    <td class="py-3 px-4 font-semibold" :class="queueTheme(log.client_type).number">{{ log.queue_number }}</td>
-                                    <td class="py-3 px-4">{{ serviceCategoryLabel(log) }}</td>
-                                    <td class="py-3 px-4">
-                                        <span :class="getStatusColor(log.status)" class="px-3 py-1 rounded-full text-sm capitalize">
-                                            {{ log.status }}
-                                        </span>
-                                    </td>
-                                    <td class="py-3 px-4 text-gray-600">{{ formatTime(log.updated_at) }}</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
                 </div>
             </div>
 
-            <div class="xl:col-span-1 space-y-6">
-                <!-- Next 5 Queues Preview -->
-                <div class="bg-white rounded-lg shadow-sm p-6">
-                    <h2 class="text-xl font-semibold text-[#800000] mb-4">Next in Queue</h2>
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <h2 class="text-xl font-semibold text-[#800000] mb-4">Recent Activity</h2>
 
-                    <div v-if="next.length > 0" class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-2 gap-3">
-                        <div
-                            v-for="queue in next"
-                            :key="queue.id"
-                            class="bg-gray-50 rounded-lg p-4 text-center border"
-                            :class="queueTheme(queue.client_type).chip"
-                        >
-                            <p class="text-lg font-bold" :class="queueTheme(queue.client_type).number">{{ queue.queue_number }}</p>
-                            <p class="text-xs mt-1">{{ serviceCategoryLabel(queue) }}</p>
-                            <p class="text-xs mt-1 opacity-90">{{ clientTypeLabel(queue.client_type) }}</p>
-                        </div>
-                    </div>
-
-                    <div v-else class="text-center py-6 text-gray-500">
-                        No queues waiting
-                    </div>
-                </div>
-
-                <div class="bg-white rounded-lg shadow-sm p-6">
-                    <h2 class="text-xl font-semibold text-[#800000] mb-4">Skipped Queues (Eligible for Reinstatement)</h2>
-
-                    <div class="overflow-x-auto">
-                        <table class="w-full min-w-[420px] xl:min-w-0">
-                            <thead>
-                                <tr class="border-b border-gray-200">
-                                    <th class="text-left py-3 px-4 font-semibold text-gray-700">Queue Number</th>
-                                    <th class="text-left py-3 px-4 font-semibold text-gray-700">Service Category</th>
-                                    <th class="text-left py-3 px-4 font-semibold text-gray-700">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-if="skippedEligible.length === 0">
-                                    <td colspan="3" class="text-center py-8 text-gray-500">
-                                        No eligible skipped queues
-                                    </td>
-                                </tr>
-                                <tr
-                                    v-for="queue in skippedEligible"
-                                    :key="queue.id"
-                                    class="border-b border-gray-100 hover:bg-gray-50"
-                                >
-                                    <td class="py-3 px-4 font-semibold" :class="queueTheme(queue.client_type).number">{{ queue.queue_number }}</td>
-                                    <td class="py-3 px-4">{{ serviceCategoryLabel(queue) }}</td>
-                                    <td class="py-3 px-4">
-                                        <button
-                                            @click="reinstate(queue)"
-                                            :disabled="processing || queue.skip_count >= 2 || queue.is_reinstated"
-                                            class="border-2 border-[#FFC107] hover:bg-[#FFC107] text-[#800000] px-4 py-2 rounded-lg font-semibold transition disabled:opacity-50"
-                                        >
-                                            Reinstate
-                                        </button>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[700px]">
+                        <thead>
+                            <tr class="border-b border-gray-200">
+                                <th class="text-left py-3 px-4 font-semibold text-gray-700">Queue Number</th>
+                                <th class="text-left py-3 px-4 font-semibold text-gray-700">Service</th>
+                                <th class="text-left py-3 px-4 font-semibold text-gray-700">Status</th>
+                                <th class="text-left py-3 px-4 font-semibold text-gray-700">Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-if="recentLogs.length === 0">
+                                <td colspan="4" class="text-center py-8 text-gray-500">
+                                    No recent activity
+                                </td>
+                            </tr>
+                            <tr
+                                v-for="log in recentLogs"
+                                :key="log.id"
+                                class="border-b border-gray-100 hover:bg-gray-50"
+                            >
+                                <td class="py-3 px-4 font-semibold" :class="queueTheme(log.client_type).number">{{ log.queue_number }}</td>
+                                <td class="py-3 px-4">{{ serviceCategoryLabel(log) }}</td>
+                                <td class="py-3 px-4">
+                                    <span :class="getStatusColor(log.status)" class="px-3 py-1 rounded-full text-sm capitalize">
+                                        {{ log.status }}
+                                    </span>
+                                </td>
+                                <td class="py-3 px-4 text-gray-600">{{ formatTime(log.updated_at) }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>

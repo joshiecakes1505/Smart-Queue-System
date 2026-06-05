@@ -24,10 +24,6 @@ const serviceSummary = computed(() => {
     return props.queue.service_category?.name || 'N/A';
 });
 
-const browserPrint = () => {
-    window.print();
-};
-
 const printReceipt = async () => {
     if (isPrinting.value) {
         return;
@@ -56,14 +52,8 @@ const printReceipt = async () => {
             icon: 'error',
             title: 'Print failed',
             text: message,
-            confirmButtonText: 'Browser Print (with QR)',
-            showCancelButton: true,
-            cancelButtonText: 'Close',
+            confirmButtonText: 'Close',
         });
-
-        if (result.isConfirmed) {
-            browserPrint();
-        }
     } finally {
         isPrinting.value = false;
     }
@@ -82,7 +72,7 @@ onMounted(async () => {
         await Swal.fire({
             icon: 'warning',
             title: 'Printer not ready',
-            text: 'QZ Tray connection failed. You can still use Browser Print or retry Print Ticket.',
+            text: 'QZ Tray connection failed. Please retry Print Receipt after checking the printer connection.',
             confirmButtonText: 'OK',
         });
     }
@@ -128,13 +118,6 @@ const clientTypeLabel = (type) => {
                     :disabled="isPrinting"
                 >
                     {{ isPrinting ? 'Printing...' : 'Print Receipt' }}
-                </button>
-                <button
-                    @click="browserPrint"
-                    type="button"
-                    class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-semibold text-sm sm:text-base leading-tight transition"
-                >
-                    Browser Print
                 </button>
             </div>
 
