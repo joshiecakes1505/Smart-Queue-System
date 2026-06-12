@@ -24,8 +24,8 @@ class QueueController extends Controller
 
     public function index()
     {
-        $categories = ServiceCategory::orderBy('name')->get();
-        $waitingQueues = Queue::with('serviceCategory')
+        $categories = ServiceCategory::query()->orderBy('name', 'asc')->get();
+        $waitingQueues = Queue::query()->with('serviceCategory')
             ->where('status', Queue::STATUS_WAITING)
             ->orderByRaw("CASE WHEN client_type IN ('senior_citizen', 'high_priority') THEN 0 ELSE 1 END")
             ->orderBy('created_at', 'asc')
@@ -38,8 +38,8 @@ class QueueController extends Controller
                 ];
             });
         
-        $totalWaiting = Queue::where('status', Queue::STATUS_WAITING)->count();
-        $totalServedToday = Queue::whereDate('created_at', today())
+        $totalWaiting = Queue::query()->where('status', Queue::STATUS_WAITING)->count();
+        $totalServedToday = Queue::query()->whereDate('end_time', today())
             ->where('status', Queue::STATUS_COMPLETED)
             ->count();
         
@@ -84,14 +84,16 @@ class QueueController extends Controller
 
         $primaryServiceCategoryId = (int) $serviceCategoryIds->first();
 
+        $notePayload = [
+            'service_category_ids' => $serviceCategoryIds->all(),
+            'service_category_names' => $selectedCategoryNames,
+            'client_note' => $validated['note'] ?? null,
+        ];
+
         $queue = $this->queueService->createQueue([
             ...$validated,
             'service_category_id' => $primaryServiceCategoryId,
-            'note' => json_encode([
-                'service_category_ids' => $serviceCategoryIds->all(),
-                'service_category_names' => $selectedCategoryNames,
-                'note' => $validated['note'] ?? null,
-            ]),
+            'note' => json_encode($notePayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
         ]);
 
         return redirect()

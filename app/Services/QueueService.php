@@ -6,6 +6,7 @@ use App\Events\DisplayQueuesUpdated;
 use App\Models\Queue;
 use App\Models\QueueCounter;
 use App\Models\QueueLog;
+use App\Models\ServiceCategory;
 use App\Repositories\QueueRepository;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -31,10 +32,12 @@ class QueueService
             $serviceCategoryId = $data['service_category_id'] ?? null;
 
             // Get the service category to use its prefix
-            $serviceCategory = \App\Models\ServiceCategory::find($serviceCategoryId);
+            $serviceCategory = ServiceCategory::query()
+                ->whereKey($serviceCategoryId)
+                ->first();
             $prefix = $serviceCategory?->prefix ?? 'Q';
 
-            $counterQuery = QueueCounter::whereDate('date', $date)
+            $counterQuery = QueueCounter::query()->whereDate('date', $date)
                 ->where('service_category_id', $serviceCategoryId);
 
             $counter = $counterQuery->lockForUpdate()->first();
@@ -81,7 +84,7 @@ class QueueService
 
             $number = str_pad($counter->last_number, 3, '0', STR_PAD_LEFT);
             $queueNumber = sprintf('%s-%s', $prefix, $number);
-        } while (Queue::where('queue_number', $queueNumber)->exists());
+        } while (Queue::query()->where('queue_number', $queueNumber)->exists());
 
         return $queueNumber;
     }
@@ -92,7 +95,7 @@ class QueueService
     public function callNext(int $windowId, ?int $serviceCategoryId = null, ?int $performedBy = null): ?Queue
     {
         $next = DB::transaction(function () use ($windowId, $serviceCategoryId, $performedBy) {
-            $activeQueue = Queue::where('cashier_window_id', $windowId)
+            $activeQueue = Queue::query()->where('cashier_window_id', $windowId)
                 ->where('status', Queue::STATUS_CALLED)
                 ->orderBy('start_time', 'desc')
                 ->first();
@@ -244,12 +247,12 @@ class QueueService
     {
         $date = now()->toDateString();
 
-        $counterQuery = QueueCounter::whereDate('date', $date);
+        $counterQuery = QueueCounter::query()->whereDate('date', $date);
 
         if ($serviceCategoryId) {
             $counterQuery->where('service_category_id', $serviceCategoryId);
         } else {
-            $counterQuery->whereNull('service_category_id');
+            $counterQuery->where('service_category_id', '=', null);
         }
 
         $counter = $counterQuery->lockForUpdate()->first();
