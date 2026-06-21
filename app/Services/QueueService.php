@@ -10,6 +10,7 @@ use App\Models\ServiceCategory;
 use App\Repositories\QueueRepository;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Illuminate\Support\Str;
 
 class QueueService
 {
@@ -58,6 +59,7 @@ class QueueService
 
             $queue = $this->repo->create([
                 'queue_number' => $queueNumber,
+                'tracking_token' => Str::uuid(),
                 'service_category_id' => $serviceCategoryId,
                 'status' => Queue::STATUS_WAITING,
                 'client_name' => $data['client_name'] ?? null,

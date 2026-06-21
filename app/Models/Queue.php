@@ -28,6 +28,7 @@ class Queue extends Model
 
     protected $fillable = [
         'queue_number',
+        'tracking_token',
         'service_category_id',
         'status',
         'skip_count',
