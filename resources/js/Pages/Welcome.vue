@@ -35,7 +35,7 @@ const submit = () => {
         <!-- Maroon Header -->
         <header class="bg-[#800000] text-white py-6">
             <div class="container mx-auto px-6 text-center">
-                <h1 class="text-3xl font-bold">Smart Queuing System</h1>
+                <h1 class="text-3xl font-bold">Smart Cashier Queuing System</h1>
                 <p class="text-yellow-200 mt-1">Batangas Eastern Colleges</p>
             </div>
         </header>

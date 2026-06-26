@@ -8,8 +8,8 @@ import { Link } from '@inertiajs/vue3';
         <div class="flex min-h-[70vh] items-center justify-center px-4 py-10 sm:px-6 sm:py-16">
             <div class="w-full max-w-3xl text-center">
                 <!-- Large System Title -->
-                <h1 class="mb-4 text-3xl font-bold leading-tight text-[#800000] sm:text-4xl md:text-5xl">
-                    Smart School Cashier<br />Queuing System
+                <h1 class="mb-4 text-4xl font-bold leading-tight text-[#800000] sm:text-5xl md:text-6xl">
+                    Less waiting. More serving. Smarter queues.
                 </h1>
                 
                 <!-- Subtitle -->

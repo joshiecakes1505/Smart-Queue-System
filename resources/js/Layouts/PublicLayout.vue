@@ -8,7 +8,7 @@ const schoolLogoUrl = document.querySelector('meta[name="app-logo-url"]')?.getAt
 defineProps({
     title: {
         type: String,
-        default: 'Smart Queuing System'
+        default: 'Smart Cashier Queuing System'
     }
 });
 </script>
@@ -27,7 +27,7 @@ defineProps({
                         class="h-12 w-12 object-contain"
                     />
                     <div>
-                        <h1 class="text-xl font-semibold">Smart School Cashier Queuing System</h1>
+                        <h1 class="text-xl font-semibold">Smart Cashier Queuing System</h1>
                         <p class="text-sm text-yellow-200">Batangas Eastern Colleges</p>
                     </div>
                 </div>
