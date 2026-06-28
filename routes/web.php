@@ -109,3 +109,5 @@ Route::get('/chatbot', [ChatbotController::class, 'index'])->name('chatbot.index
 Route::post('/api/chatbot/message', [ChatbotController::class, 'sendMessage'])->name('api.chatbot.message');
 Route::get('/api/chatbot/faq-topics', [ChatbotController::class, 'getFaqTopics'])->name('api.chatbot.faq-topics');
 Route::get('/api/chatbot/faq/{topicId}', [ChatbotController::class, 'getFaqTopic'])->name('api.chatbot.faq-topic');
+
+require __DIR__.'/auth.php';

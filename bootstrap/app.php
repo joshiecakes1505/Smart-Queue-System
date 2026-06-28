@@ -22,6 +22,14 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => \App\Http\Middleware\RoleMiddleware::class,
         ]);
+
+        
+    })
+
+    ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->alias([
+            'two-factor' => \App\Http\Middleware\EnsureTwoFactorIsVerified::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

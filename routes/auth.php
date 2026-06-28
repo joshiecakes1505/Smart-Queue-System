@@ -6,6 +6,7 @@ use App\Http\Controllers\Auth\EmailVerificationNotificationController;
 use App\Http\Controllers\Auth\EmailVerificationPromptController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
+use App\Http\Controllers\Auth\TwoFactorController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
@@ -13,6 +14,15 @@ Route::middleware('guest')->group(function () {
         ->name('register');
 
     Route::post('register', [RegisteredUserController::class, 'store']);
+});
+
+Route::middleware('auth')->group(function () {
+    Route::get('two-factor', [TwoFactorController::class, 'index'])
+        ->name('two-factor.index');
+    Route::post('two-factor', [TwoFactorController::class, 'store'])
+        ->name('two-factor.store');
+    Route::post('two-factor/resend', [TwoFactorController::class, 'resend'])
+        ->name('two-factor.resend');
 });
 
 Route::get('login', [AuthenticatedSessionController::class, 'create'])
