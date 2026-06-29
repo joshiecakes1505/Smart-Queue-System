@@ -45,12 +45,20 @@ class AuthenticatedSessionController extends Controller
         $user = Auth::guard($guard)->user();
         $roleName = $user->role?->name;
 
-        return match ($roleName) {
-            'admin' => redirect()->route('admin.dashboard'),
-            'frontdesk' => redirect()->route('frontdesk.queues.index'),
-            'cashier' => redirect()->route('cashier.index'),
-            default => redirect()->route('admin.dashboard'),
-        };
+        //generating two factor code and expiration
+        $user->two_factor_code = rand(100000, 999999);
+        $user->two_factor_expires_at = now()->addMinutes(10);
+        $user->save();
+
+        //send notification
+        $user->notify(new \App\Notifications\SendTwoFactorCode());
+
+        //marking session explicitly for unverified users
+        session(['2fa_verified' => false]);
+
+        //sending the route to the two factor verification page
+        return redirect()->route('two-factor.index');
+
     }
 
     /**

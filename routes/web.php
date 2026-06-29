@@ -19,21 +19,21 @@ use Illuminate\Support\Facades\URL;
 use Inertia\Inertia;
 
 Route::get('/', function () {
-    // If already authenticated, redirect to appropriate dashboard
-    $authenticatedUser = Auth::guard('admin')->user()
-        ?? Auth::guard('frontdesk')->user()
-        ?? Auth::guard('cashier')->user()
-        ?? Auth::guard('web')->user();
+    // // If already authenticated, redirect to appropriate dashboard
+    // $authenticatedUser = Auth::guard('admin')->user()
+    //     ?? Auth::guard('frontdesk')->user()
+    //     ?? Auth::guard('cashier')->user()
+    //     ?? Auth::guard('web')->user();
 
-    if ($authenticatedUser) {
-        $roleName = $authenticatedUser->role?->name;
-        return match ($roleName) {
-            'admin' => redirect()->route('admin.dashboard'),
-            'frontdesk' => redirect()->route('frontdesk.queues.index'),
-            'cashier' => redirect()->route('cashier.index'),
-            default => redirect()->route('login'),
-        };
-    }
+    // if ($authenticatedUser) {
+    //     $roleName = $authenticatedUser->role?->name;
+    //     return match ($roleName) {
+    //         'admin' => redirect()->route('admin.dashboard'),
+    //         'frontdesk' => redirect()->route('frontdesk.queues.index'),
+    //         'cashier' => redirect()->route('cashier.index'),
+    //         default => redirect()->route('login'),
+    //     };
+    // }
     
     // Otherwise show landing page
     return Inertia::render('Landing');
@@ -110,3 +110,4 @@ Route::post('/api/chatbot/message', [ChatbotController::class, 'sendMessage'])->
 Route::get('/api/chatbot/faq-topics', [ChatbotController::class, 'getFaqTopics'])->name('api.chatbot.faq-topics');
 Route::get('/api/chatbot/faq/{topicId}', [ChatbotController::class, 'getFaqTopic'])->name('api.chatbot.faq-topic');
 
+require __DIR__.'/auth.php';

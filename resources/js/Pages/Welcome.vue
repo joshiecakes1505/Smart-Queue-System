@@ -35,7 +35,7 @@ const submit = () => {
         <!-- Maroon Header -->
         <header class="bg-[#800000] text-white py-6">
             <div class="container mx-auto px-6 text-center">
-                <h1 class="text-3xl font-bold">Smart Queuing System</h1>
+                <h1 class="text-3xl font-bold">Smart Cashier Queuing System</h1>
                 <p class="text-yellow-200 mt-1">Batangas Eastern Colleges</p>
             </div>
         </header>
@@ -108,7 +108,7 @@ const submit = () => {
                         </div>
 
                         <!-- Remember & Forgot Password -->
-                        <div class="flex items-center justify-between">
+                        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <label class="flex items-center">
                                 <input
                                     type="checkbox"
@@ -130,7 +130,7 @@ const submit = () => {
                         <!-- Login Button -->
                         <button
                             type="submit"
-                            class="w-full bg-[#FFC107] hover:bg-[#FFB300] text-[#800000] py-3 rounded-lg font-semibold transition disabled:opacity-50"
+                            class="w-full rounded-lg bg-[#FFC107] py-3 font-semibold text-[#800000] transition hover:bg-[#FFB300] disabled:opacity-50"
                             :disabled="form.processing"
                         >
                             <span v-if="form.processing">Logging in...</span>
@@ -152,7 +152,7 @@ const submit = () => {
         </div>
 
         <!-- Footer -->
-        <footer class="bg-gray-50 border-t border-gray-200 py-4 mt-auto">
+        <footer class="mt-auto border-t border-gray-200 bg-gray-50 py-4">
             <div class="container mx-auto px-6 text-center">
                 <p class="text-sm text-gray-600">© 2026 Batangas Eastern Colleges</p>
             </div>

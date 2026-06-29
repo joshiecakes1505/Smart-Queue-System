@@ -54,7 +54,7 @@ const navigationLinks = computed(() => {
         <!-- Maroon Top Navigation Bar -->
         <nav class="bg-[#800000] text-white shadow-sm">
             <div class="container mx-auto px-4 sm:px-6 py-4">
-                <div class="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_auto] sm:items-center">
                     <!-- System Name -->
                     <div class="flex items-center gap-3">
                         <img
@@ -63,39 +63,40 @@ const navigationLinks = computed(() => {
                             class="h-11 w-11 object-contain"
                         />
                         <div class="min-w-0">
-                            <h1 class="text-base sm:text-lg font-semibold leading-tight">Smart Queuing System - BEC</h1>
+                            <h1 class="text-base sm:text-lg font-semibold leading-tight">Smart Cashier Queuing System - BEC</h1>
                             <p class="text-xs text-yellow-200">{{ title }}</p>
                         </div>
                     </div>
 
+                    <!-- Navigation Links -->
+                    <div class="order-2 mt-1 flex flex-wrap gap-2 border-t border-white/20 pt-3 sm:order-none sm:col-span-2 sm:mt-0 sm:border-t-0 sm:pt-0">
+                        <Link
+                            v-for="link in navigationLinks"
+                            :key="link.href"
+                            :href="link.href"
+                            class="rounded-lg bg-white/10 px-3 py-1.5 text-sm transition hover:bg-white/20"
+                        >
+                            {{ link.label }}
+                        </Link>
+
+                        <Link
+                            :href="route('display.index')"
+                            class="rounded-lg bg-[#FFC107] px-3 py-1.5 text-sm text-[#800000] transition hover:bg-[#FFB300]"
+                        >
+                            Display Board
+                        </Link>
+                    </div>
+
                     <!-- User Info & Logout -->
-                    <div class="flex flex-wrap items-center justify-start sm:justify-end gap-3 sm:gap-4">
+                    <div class="order-3 flex w-full flex-col gap-3 sm:order-none sm:col-start-2 sm:row-start-1 sm:w-auto sm:flex-row sm:items-center sm:justify-end sm:gap-4">
                         <span class="text-sm break-all">{{ $page.props.auth.user.name }}</span>
                         <button
                             @click="logout"
-                            class="bg-yellow-500 hover:bg-yellow-600 text-[#800000] px-4 py-2 rounded-lg text-sm font-medium transition"
+                            class="w-full rounded-lg bg-yellow-500 px-4 py-2 text-sm font-medium text-[#800000] transition hover:bg-yellow-600 sm:w-auto"
                         >
                             Logout
                         </button>
                     </div>
-                </div>
-
-                <div class="mt-4 pt-3 border-t border-white/20 flex flex-wrap gap-2">
-                    <Link
-                        v-for="link in navigationLinks"
-                        :key="link.href"
-                        :href="link.href"
-                        class="px-3 py-1.5 rounded-lg text-sm bg-white/10 hover:bg-white/20 transition"
-                    >
-                        {{ link.label }}
-                    </Link>
-
-                    <Link
-                        :href="route('display.index')"
-                        class="px-3 py-1.5 rounded-lg text-sm bg-[#FFC107] text-[#800000] hover:bg-[#FFB300] transition"
-                    >
-                        Display Board
-                    </Link>
                 </div>
             </div>
         </nav>
