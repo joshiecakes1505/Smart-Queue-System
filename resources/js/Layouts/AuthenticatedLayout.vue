@@ -63,7 +63,7 @@ const navigationLinks = computed(() => {
                             class="h-11 w-11 object-contain"
                         />
                         <div class="min-w-0">
-                            <h1 class="text-base sm:text-lg font-semibold leading-tight">Smart Queuing System - BEC</h1>
+                            <h1 class="text-base sm:text-lg font-semibold leading-tight">Smart Cashier Queuing System - BEC</h1>
                             <p class="text-xs text-yellow-200">{{ title }}</p>
                         </div>
                     </div>

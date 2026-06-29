@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Auth;
 
+use Inertia\Inertia;
+use Inertia\Response;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
@@ -10,9 +12,11 @@ use Illuminate\Support\Facades\Auth;
 
 class TwoFactorController extends Controller
 {
-    public function index()
+    public function index(): Response
     {
-        return view('auth.two-factor');
+        return Inertia::render('Auth/TwoFactor', [
+            'status' => session('status'),
+        ]);
     }
 
     //verify token 

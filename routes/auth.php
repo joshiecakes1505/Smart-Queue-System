@@ -16,14 +16,14 @@ Route::middleware('guest')->group(function () {
     Route::post('register', [RegisteredUserController::class, 'store']);
 });
 
-Route::middleware('auth')->group(function () {
-    Route::get('two-factor', [TwoFactorController::class, 'index'])
-        ->name('two-factor.index');
-    Route::post('two-factor', [TwoFactorController::class, 'store'])
-        ->name('two-factor.store');
-    Route::post('two-factor/resend', [TwoFactorController::class, 'resend'])
-        ->name('two-factor.resend');
-});
+// Route::middleware('auth')->group(function () {
+//     Route::get('two-factor', [TwoFactorController::class, 'index'])
+//         ->name('two-factor.index');
+//     Route::post('two-factor', [TwoFactorController::class, 'store'])
+//         ->name('two-factor.store');
+//     Route::post('two-factor/resend', [TwoFactorController::class, 'resend'])
+//         ->name('two-factor.resend');
+// });
 
 Route::get('login', [AuthenticatedSessionController::class, 'create'])
     ->name('login');
