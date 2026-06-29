@@ -1,11 +1,13 @@
 <script setup>
-import Checkbox from '@/Components/Checkbox.vue';
-import GuestLayout from '@/Layouts/GuestLayout.vue';
-import InputError from '@/Components/InputError.vue';
-import InputLabel from '@/Components/InputLabel.vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
-import TextInput from '@/Components/TextInput.vue';
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import Checkbox from "@/Components/Checkbox.vue";
+import GuestLayout from "@/Layouts/GuestLayout.vue";
+import InputError from "@/Components/InputError.vue";
+import InputLabel from "@/Components/InputLabel.vue";
+import PrimaryButton from "@/Components/PrimaryButton.vue";
+import TextInput from "@/Components/TextInput.vue";
+import { Head, Link, useForm } from "@inertiajs/vue3";
+import { ref } from "vue";
+
 
 defineProps({
     canResetPassword: {
@@ -17,15 +19,39 @@ defineProps({
 });
 
 const form = useForm({
-    email: '',
-    password: '',
+    email: "",
+    password: "",
     remember: false,
 });
 
 const submit = () => {
-    form.post(route('login'), {
-        onFinish: () => form.reset('password'),
+    form.post(route("login"), {
+        onFinish: () => form.reset("password"),
     });
+};
+
+const eyeIconUrl =
+    document
+        .querySelector('meta[name="eye-icon-url"]')
+        ?.getAttribute("content") || `${window.location.origin}/images/eye.png`;
+
+const showPassword = ref(false);
+let passwordTimer = null;
+
+const togglePasswordVisibility = () => {
+    showPassword.value = !showPassword.value;
+
+    if (showPassword.value) {
+        clearTimeout(passwordTimer);
+        passwordTimer = setTimeout(() => {
+            showPassword.value = false;
+        }, 500); // Hide password after .5 second
+    } else {
+        showPassword.value = false;
+        if (passwordTimer) {
+            clearTimeout(passwordTimer);
+        }
+    }
 };
 </script>
 
@@ -57,26 +83,35 @@ const submit = () => {
             <div class="mt-4">
                 <InputLabel for="password" value="Password" />
 
-                <TextInput
-                    id="password"
-                    type="password"
-                    class="mt-1 block w-full"
-                    v-model="form.password"
-                    required
-                    autocomplete="current-password"
-                />
+                <div class="relative mt-1">
+                    
 
+                    <TextInput
+                        id="password"
+                        :type="showPassword ? 'text' : 'password'"
+                        class="mt-1 block w-full pr-10"
+                        v-model="form.password"
+                        required
+                        autocomplete="current-password"
+                    />
+
+                    <!-- //click to toggle password visibility -->
+                    <button
+                        type="button"
+                        class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 focus:outline-none"
+                        @click="togglePasswordVisibility"
+                    >
+                        <img
+                                :src="eyeIconUrl"
+                                alt="Toggle password"
+                                class="h-5 w-5"
+                            />
+                        />
+                    </button>
+                </div>
                 <InputError class="mt-2" :message="form.errors.password" />
             </div>
 
-            <div class="mt-4 block">
-                <label class="flex items-center">
-                    <Checkbox name="remember" v-model:checked="form.remember" />
-                    <span class="ms-2 text-sm text-gray-600"
-                        >Remember me</span
-                    >
-                </label>
-            </div>
 
             <div class="mt-4 flex items-center justify-end">
                 <Link
