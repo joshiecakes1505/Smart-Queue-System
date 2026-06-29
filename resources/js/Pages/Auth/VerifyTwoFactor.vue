@@ -1,4 +1,4 @@
-<!-- <script setup>
+<script setup>
 import GuestLayout from '@/Layouts/GuestLayout.vue';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
@@ -40,7 +40,7 @@ const resendCode = () => {
             {{ status }}
         </div>
 
-        <form @submit.prevent="submit">
+        <form  @submit.prevent="submit">
             <div>
                 <InputLabel for="two_factor_code" value="Verification Code" />
 
@@ -73,4 +73,4 @@ const resendCode = () => {
             </div>
         </form>
     </GuestLayout>
-</template> -->
+</template>

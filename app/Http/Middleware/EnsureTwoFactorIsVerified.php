@@ -17,6 +17,16 @@ class EnsureTwoFactorIsVerified
     public function handle(Request $request, Closure $next): Response
     {
         if (Auth::check() && !session('2fa_verified', false)) {
+
+            if ($request->routeIs('two-factor.*') || $request->routeIs('logout')) {
+                return $next($request);
+            }
+
+            if ($request->header('X-Inertia')) {
+                 if (!$request->routeIs('two-factor.index')) {
+                    return redirect()->route('two-factor.index');
+            }
+            }
             return redirect()->route('two-factor.index');
         }
         return $next($request);

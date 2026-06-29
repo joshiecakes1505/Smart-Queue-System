@@ -14,7 +14,7 @@ class TwoFactorController extends Controller
 {
     public function index(): Response
     {
-        return Inertia::render('Auth/TwoFactor', [
+        return Inertia::render('Auth/VerifyTwoFactor', [
             'status' => session('status'),
         ]);
     }
@@ -30,7 +30,7 @@ class TwoFactorController extends Controller
         $roleName = $user->role?->name;
 
         //validating code matching and timestamp threshold
-        if ($request->two_factor_code === (int)$user->two_factor_code && now()->lessThanOrEqualTo($user->two_factor_expires_at)) {
+        if ((int)$request->two_factor_code === (int)$user->two_factor_code && $user->two_factor_expires_at && now()->lessThanOrEqualTo($user->two_factor_expires_at)) {
             
             //wipe the two factor code and expiration timestamp
             $user->forceFill([
@@ -45,7 +45,7 @@ class TwoFactorController extends Controller
                 'admin' => redirect()->route('admin.dashboard'),
                 'frontdesk' => redirect()->route('frontdesk.queues.index'),
                 'cashier' => redirect()->route('cashier.index'),
-                default => redirect()->route('admin.dashboard'),
+                default => redirect()->route('dashboard'),
             };
         } else {
             return redirect()->back()->withErrors(['two_factor_code' => 'The provided two-factor code is invalid. Please check your email for the correct code.']);

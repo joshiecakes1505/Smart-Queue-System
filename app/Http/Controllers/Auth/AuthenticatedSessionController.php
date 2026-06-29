@@ -57,12 +57,8 @@ class AuthenticatedSessionController extends Controller
         session(['2fa_verified' => false]);
 
         //sending the route to the two factor verification page
-        return match ($roleName) {
-            'admin' => redirect()->route('admin.dashboard'),
-            'frontdesk' => redirect()->route('frontdesk.queues.index'),
-            'cashier' => redirect()->route('cashier.index'),
-            default => redirect()->route('admin.dashboard'),
-        };
+        return redirect()->route('two-factor.index');
+
     }
 
     /**
