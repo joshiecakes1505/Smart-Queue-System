@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use App\Models\User;
 
 class LoginRequest extends FormRequest
 {
@@ -48,6 +49,20 @@ class LoginRequest extends FormRequest
         $credentials = $this->only('email', 'password');
 
         if (! Auth::guard($guard)->attempt($credentials, $this->boolean('remember'))) {
+            $disabledUser = User::query()
+                ->where('email', '=', $this->string('email')->toString())
+                ->whereHas('role', fn ($q) => $q->where('name', '=', $this->string('role')->toString()))
+                ->whereNotNull('disabled_at')
+                ->first();
+
+            if ($disabledUser) {
+                RateLimiter::hit($this->throttleKey());
+
+                throw ValidationException::withMessages([
+                    'email' => 'This account has been disabled. Please contact the administrator.',
+                ]);
+            }
+
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
@@ -63,6 +78,14 @@ class LoginRequest extends FormRequest
 
             throw ValidationException::withMessages([
                 'role' => 'Selected role does not match this account.',
+            ]);
+        }
+
+        if ($user->disabled_at !== null) {
+            Auth::guard($guard)->logout();
+
+            throw ValidationException::withMessages([
+                'email' => 'This account has been disabled. Please contact the administrator.',
             ]);
         }
 

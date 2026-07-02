@@ -47,6 +47,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'disabled_at' => 'datetime',
             'password' => 'hashed',
         ];
     }
@@ -54,5 +55,19 @@ class User extends Authenticatable
     public function role(): BelongsTo
     {
         return $this->belongsTo(Role::class);
+    }
+
+    public function disable(): void
+    {
+        $this->forceFill([
+            'disabled_at' => now(),
+        ])->save();
+    }
+
+    public function enable(): void
+    {
+        $this->forceFill([
+            'disabled_at' => null,
+        ])->save();
     }
 }

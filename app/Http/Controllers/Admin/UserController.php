@@ -69,7 +69,7 @@ class UserController extends Controller
 
         DB::transaction(function () use ($cashierUserId, $cashierWindow) {
             if ($cashierUserId !== null) {
-                CashierWindow::where('assigned_user_id', $cashierUserId)
+                CashierWindow::query()->where('assigned_user_id', '=', $cashierUserId)
                     ->update(['assigned_user_id' => null]);
             }
 
@@ -83,7 +83,11 @@ class UserController extends Controller
     public function create()
     {
         $roles = Role::query()
-            ->whereIn('name', ['admin', 'cashier', 'frontdesk'])
+            ->where(function ($query) {
+                $query->where('name', '=', 'admin')
+                    ->orWhere('name', '=', 'cashier')
+                    ->orWhere('name', '=', 'frontdesk');
+            })
             ->orderByRaw("CASE name WHEN 'admin' THEN 1 WHEN 'cashier' THEN 2 WHEN 'frontdesk' THEN 3 ELSE 4 END")
             ->get(['id', 'name']);
 
@@ -105,7 +109,11 @@ class UserController extends Controller
     public function edit(User $user)
     {
         $roles = Role::query()
-            ->whereIn('name', ['admin', 'cashier', 'frontdesk'])
+            ->where(function ($query) {
+                $query->where('name', '=', 'admin')
+                    ->orWhere('name', '=', 'cashier')
+                    ->orWhere('name', '=', 'frontdesk');
+            })
             ->orderByRaw("CASE name WHEN 'admin' THEN 1 WHEN 'cashier' THEN 2 WHEN 'frontdesk' THEN 3 ELSE 4 END")
             ->get(['id', 'name']);
 
@@ -135,11 +143,24 @@ class UserController extends Controller
         return redirect()->route('admin.users.edit', $user)->with('success', 'Password reset to the default value and email sent.');
     }
 
+    public function enable(User $user)
+    {
+        if (auth('admin')->id() === $user->id) {
+            return back()->withErrors([
+                'user' => 'You cannot change your own account status from this panel.',
+            ]);
+        }
+
+        $user->enable();
+
+        return redirect()->route('admin.users.index')->with('success', 'User enabled.');
+    }
+
     public function destroy(User $user)
     {
         if (auth('admin')->id() === $user->id) {
             return back()->withErrors([
-                'user' => 'You cannot delete your own account from this panel.',
+                'user' => 'You cannot disable your own account from this panel.',
             ]);
         }
 
@@ -157,9 +178,9 @@ class UserController extends Controller
             }
         }
 
-        $user->delete();
+        $user->disable();
 
-        return redirect()->route('admin.users.index')->with('success', 'User deleted.');
+        return redirect()->route('admin.users.index')->with('success', 'User disabled.');
     }
 
     private function sendAccountCreatedEmail(User $user): void

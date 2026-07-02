@@ -24,15 +24,10 @@ class BackupController extends Controller
         }
 
         $disk = Storage::disk($diskName);
-        $backupRoot = trim((string) config('backup.backup.name', config('app.name', 'laravel-backup')), '/');
 
         try {
             $allFiles = collect($disk->allFiles())
                 ->filter(fn (string $path) => str_ends_with(strtolower($path), '.zip'));
-
-            if ($backupRoot !== '') {
-                $allFiles = $allFiles->filter(fn (string $path) => str_starts_with($path, $backupRoot.'/'));
-            }
 
             $latestBackupPath = $allFiles
                 ->sortByDesc(fn (string $path) => $disk->lastModified($path))

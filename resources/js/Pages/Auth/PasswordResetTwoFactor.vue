@@ -5,9 +5,13 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import { Head, useForm } from '@inertiajs/vue3';
 
-defineProps({
+const props = defineProps({
     status: {
         type: String,
+    },
+    email: {
+        type: String,
+        required: true,
     },
 });
 
@@ -18,36 +22,37 @@ const form = useForm({
 const resendForm = useForm({});
 
 const submit = () => {
-    form.post(route('two-factor.store'), {
+    form.post(route('password.two-factor.store'), {
         onFinish: () => form.reset('two_factor_code'),
     });
 };
 
 const resendCode = () => {
-    resendForm.post(route('two-factor.resend'));
+    resendForm.post(route('password.two-factor.resend'));
 };
 </script>
 
 <template>
     <GuestLayout>
-        <Head title="Two-Factor Verification" />
+        <Head title="Password Reset Verification" />
 
-        <div class="mb-4 text-sm text-gray-600 dark:text-gray-400">
-            This system requires Two-Factor Validation. Check your email for a 6-digit confirmation key.
+        <div class="mb-4 text-sm text-gray-600">
+            We sent a verification code to {{ email }}. Enter the code before we
+            send your password reset link.
         </div>
 
-        <div v-if="status" class="mb-4 font-medium text-sm text-green-600 dark:text-green-400">
+        <div v-if="status" class="mb-4 text-sm font-medium text-green-600">
             {{ status }}
         </div>
 
-        <form  @submit.prevent="submit">
+        <form @submit.prevent="submit">
             <div>
                 <InputLabel for="two_factor_code" value="Verification Code" />
 
                 <input
                     id="two_factor_code"
                     type="text"
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-700 dark:bg-white-900 dark:text-white-300"
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                     v-model="form.two_factor_code"
                     required
                     autofocus
@@ -61,14 +66,14 @@ const resendCode = () => {
                 <button
                     type="button"
                     @click="resendCode"
-                    class="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 underline mx-4"
+                    class="text-sm text-gray-600 hover:text-gray-900 underline mx-4"
                     :disabled="resendForm.processing"
                 >
                     Resend Code
                 </button>
 
                 <PrimaryButton :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
-                    Verify
+                    Verify and Continue
                 </PrimaryButton>
             </div>
         </form>

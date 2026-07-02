@@ -1,8 +1,10 @@
 <script setup>
 import { computed } from 'vue';
+import { ref } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { usePage } from '@inertiajs/vue3';
 import ChatbotWidget from '@/Components/ChatbotWidget.vue';
+import Modal from '@/Components/Modal.vue';
 
 defineProps({
     title: {
@@ -15,6 +17,21 @@ const logout = () => {
     router.post(route('logout'), { role: roleName.value });
 };
 
+const showingLogoutConfirmation = ref(false);
+
+const confirmLogout = () => {
+    showingLogoutConfirmation.value = true;
+};
+
+const cancelLogout = () => {
+    showingLogoutConfirmation.value = false;
+};
+
+const proceedLogout = () => {
+    showingLogoutConfirmation.value = false;
+    logout();
+};
+
 const page = usePage();
 const schoolLogoUrl = document.querySelector('meta[name="app-logo-url"]')?.getAttribute('content')
     || `${window.location.origin}/images/school-logo.png`;
@@ -25,6 +42,7 @@ const navigationLinks = computed(() => {
     if (roleName.value === 'admin') {
         return [
             { label: 'Admin Dashboard', href: route('admin.dashboard') },
+            { label: 'Profile', href: route('profile.edit') },
             { label: 'Manage Users', href: route('admin.users.index') },
             { label: 'Service Categories', href: route('admin.service-categories.index') },
             { label: 'Reports', href: route('admin.reports.daily') },
@@ -91,7 +109,7 @@ const navigationLinks = computed(() => {
                     <div class="order-3 flex w-full flex-col gap-3 sm:order-none sm:col-start-2 sm:row-start-1 sm:w-auto sm:flex-row sm:items-center sm:justify-end sm:gap-4">
                         <span class="text-sm break-all">{{ $page.props.auth.user.name }}</span>
                         <button
-                            @click="logout"
+                            @click="confirmLogout"
                             class="w-full rounded-lg bg-yellow-500 px-4 py-2 text-sm font-medium text-[#800000] transition hover:bg-yellow-600 sm:w-auto"
                         >
                             Logout
@@ -107,5 +125,31 @@ const navigationLinks = computed(() => {
         </main>
 
         <ChatbotWidget v-if="roleName === 'admin'" />
+
+        <Modal :show="showingLogoutConfirmation" @close="cancelLogout">
+            <div class="p-6 sm:p-8">
+                <h2 class="text-lg font-semibold text-[#800000]">Confirm logout</h2>
+                <p class="mt-2 text-sm text-gray-600">
+                    Are you sure you want to log out of your account?
+                </p>
+
+                <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                    <button
+                        type="button"
+                        @click="cancelLogout"
+                        class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="button"
+                        @click="proceedLogout"
+                        class="rounded-lg bg-[#800000] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#5f0000]"
+                    >
+                        Yes, log out
+                    </button>
+                </div>
+            </div>
+        </Modal>
     </div>
 </template>

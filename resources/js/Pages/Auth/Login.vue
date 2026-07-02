@@ -30,29 +30,7 @@ const submit = () => {
     });
 };
 
-const eyeIconUrl =
-    document
-        .querySelector('meta[name="eye-icon-url"]')
-        ?.getAttribute("content") || `${window.location.origin}/images/eye.png`;
 
-const showPassword = ref(false);
-let passwordTimer = null;
-
-const togglePasswordVisibility = () => {
-    showPassword.value = !showPassword.value;
-
-    if (showPassword.value) {
-        clearTimeout(passwordTimer);
-        passwordTimer = setTimeout(() => {
-            showPassword.value = false;
-        }, 500); // Hide password after .5 second
-    } else {
-        showPassword.value = false;
-        if (passwordTimer) {
-            clearTimeout(passwordTimer);
-        }
-    }
-};
 </script>
 
 <template>
@@ -83,9 +61,6 @@ const togglePasswordVisibility = () => {
             <div class="mt-4">
                 <InputLabel for="password" value="Password" />
 
-                <div class="relative mt-1">
-                    
-
                     <TextInput
                         id="password"
                         :type="showPassword ? 'text' : 'password'"
@@ -94,21 +69,6 @@ const togglePasswordVisibility = () => {
                         required
                         autocomplete="current-password"
                     />
-
-                    <!-- //click to toggle password visibility -->
-                    <button
-                        type="button"
-                        class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 focus:outline-none"
-                        @click="togglePasswordVisibility"
-                    >
-                        <img
-                                :src="eyeIconUrl"
-                                alt="Toggle password"
-                                class="h-5 w-5"
-                            />
-                        />
-                    </button>
-                </div>
                 <InputError class="mt-2" :message="form.errors.password" />
             </div>
 
