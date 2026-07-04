@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Inertia\Response;
-
+use App\Notifications\SendTwoFactorCode;
 class AuthenticatedSessionController extends Controller
 {
     /**

@@ -11,11 +11,9 @@ class SendTwoFactorCode extends Notification
 {
     use Queueable;
 
-    /**
-     * Create a new notification instance.
-     */
-    public function __construct()
-    {
+    public function __construct(
+        protected string $context = 'login',
+    ) {
         //
     }
 
@@ -34,12 +32,20 @@ class SendTwoFactorCode extends Notification
      */
     public function toMail(object $notifiable): MailMessage
     {
+        $subject = $this->context === 'password reset'
+            ? 'Your Password Reset Verification Code'
+            : 'Your Two-Factor Authentication Security Code';
+
+        $instruction = $this->context === 'password reset'
+            ? 'If you did not request a password reset, you can ignore this message.'
+            : 'If you did not initiate this login request, please change your security settings immediately.';
+
         return (new MailMessage)
-            ->subject('Your Two-Factor Authentication Security Code')
+            ->subject($subject)
             ->greeting("Maligayang araw po, {$notifiable->name}!")
             ->line("Your two-factor authentication security code is: {$notifiable->two_factor_code}")
             ->line('This code will expire in 10 minutes.')
-            ->line('If you did not initiate this login request, please change your security settings immediately.');
+            ->line($instruction);
     }
 
     /**

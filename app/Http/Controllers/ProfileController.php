@@ -51,13 +51,25 @@ class ProfileController extends Controller
 
         $user = $request->user();
 
-        Auth::logout();
+        $role = $user->role?->name;
 
-        $user->delete();
+        if ($role === 'admin') {
+            return back()->withErrors([
+                'password' => 'Admin accounts cannot be disabled from the profile page.',
+            ]);
+        }
+
+        if (in_array($role, ['admin', 'frontdesk', 'cashier', 'web'], true)) {
+            Auth::guard($role)->logout();
+        } else {
+            Auth::logout();
+        }
+
+        $user->disable();
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return Redirect::to('/');
+        return Redirect::to('/')->with('status', 'Your account has been disabled.');
     }
 }

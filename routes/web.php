@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\ServiceCategoryController as AdminServiceCategoryController;
 use App\Http\Controllers\Admin\ReportController as AdminReportController;
@@ -19,23 +20,6 @@ use Illuminate\Support\Facades\URL;
 use Inertia\Inertia;
 
 Route::get('/', function () {
-    // // If already authenticated, redirect to appropriate dashboard
-    // $authenticatedUser = Auth::guard('admin')->user()
-    //     ?? Auth::guard('frontdesk')->user()
-    //     ?? Auth::guard('cashier')->user()
-    //     ?? Auth::guard('web')->user();
-
-    // if ($authenticatedUser) {
-    //     $roleName = $authenticatedUser->role?->name;
-    //     return match ($roleName) {
-    //         'admin' => redirect()->route('admin.dashboard'),
-    //         'frontdesk' => redirect()->route('frontdesk.queues.index'),
-    //         'cashier' => redirect()->route('cashier.index'),
-    //         default => redirect()->route('login'),
-    //     };
-    // }
-    
-    // Otherwise show landing page
     return Inertia::render('Landing');
 })->name('landing');
 
@@ -46,6 +30,7 @@ Route::get('/dashboard', function () {
 Route::middleware('auth:admin,frontdesk,cashier,web')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::put('/password', [PasswordController::class, 'update'])->name('password.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
@@ -57,6 +42,7 @@ Route::middleware(['auth:admin', 'role:admin'])->prefix('admin')->name('admin.')
     Route::get('backups/download-latest', [AdminBackupController::class, 'downloadLatest'])->name('backups.download-latest');
     Route::post('cashier-windows/{cashierWindow}/assign', [AdminUserController::class, 'assignCashier'])->name('cashier-windows.assign');
     Route::post('users/{user}/reset-password', [AdminUserController::class, 'resetPassword'])->name('users.reset-password');
+    Route::patch('users/{user}/enable', [AdminUserController::class, 'enable'])->name('users.enable');
     Route::resource('users', AdminUserController::class)->except(['show']);
     Route::resource('service-categories', AdminServiceCategoryController::class)->except(['show']);
     Route::get('reports/daily', [AdminReportController::class, 'daily'])->name('reports.daily');

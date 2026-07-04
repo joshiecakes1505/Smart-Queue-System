@@ -1,8 +1,10 @@
 <script setup>
+import { computed } from 'vue';
+import { usePage, Head } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import DeleteUserForm from './Partials/DeleteUserForm.vue';
 import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm.vue';
-import { Head } from '@inertiajs/vue3';
+import UpdatePasswordForm from './Partials/UpdatePasswordForm.vue';
 
 defineProps({
     mustVerifyEmail: {
@@ -12,6 +14,9 @@ defineProps({
         type: String,
     },
 });
+
+const page = usePage();
+const roleName = computed(() => page.props.auth?.user?.role_name || null);
 </script>
 
 <template>
@@ -38,6 +43,13 @@ defineProps({
                     />
                 </div>
                 <div
+                    v-if="roleName === 'admin'"
+                    class="bg-white p-4 shadow sm:rounded-lg sm:p-8"
+                >
+                    <UpdatePasswordForm class="max-w-xl" />
+                </div>
+                <div
+                    v-if="roleName !== 'admin'"
                     class="bg-white p-4 shadow sm:rounded-lg sm:p-8"
                 >
                     <DeleteUserForm class="max-w-xl" />

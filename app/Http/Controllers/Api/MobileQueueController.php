@@ -8,6 +8,8 @@ use App\Services\QueueService;
 use App\Models\ServiceCategory;
 use Illuminate\Support\Facades\URL;
 
+use App\Models\Queue;
+
 class MobileQueueController extends Controller
 {
     protected QueueService $queueService;
@@ -125,5 +127,20 @@ class MobileQueueController extends Controller
             ->unique()
             ->values()
             ->all();
+    }
+
+    public function dashboard()
+    {
+        $today = now()->toDateString();
+
+        return response()->json([
+            'waiting' => Queue::query()
+                ->where('status', Queue::STATUS_WAITING)
+                ->count(),
+            'completed' => Queue::query()
+                ->whereDate('created_at', '=', $today, 'and')
+                ->where('status', Queue::STATUS_COMPLETED)
+                ->count(),
+        ]);
     }
 }

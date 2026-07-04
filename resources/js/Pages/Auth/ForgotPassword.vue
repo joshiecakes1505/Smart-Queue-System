@@ -5,6 +5,7 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, useForm } from '@inertiajs/vue3';
+import { computed } from 'vue';
 
 defineProps({
     status: {
@@ -16,7 +17,13 @@ const form = useForm({
     email: '',
 });
 
+const canSubmit = computed(() => form.email.trim().length > 0);
+
 const submit = () => {
+    if (!canSubmit.value) {
+        return;
+    }
+
     form.post(route('password.email'));
 };
 </script>
@@ -26,9 +33,9 @@ const submit = () => {
         <Head title="Forgot Password" />
 
         <div class="mb-4 text-sm text-gray-600">
-            Forgot your password? No problem. Just let us know your email
-            address and we will email you a password reset link that will allow
-            you to choose a new one.
+            Forgot your password? Enter your email address and we will first
+            send a verification code. After you confirm it, we will email your
+            password reset link.
         </div>
 
         <div
@@ -58,9 +65,9 @@ const submit = () => {
             <div class="mt-4 flex items-center justify-end">
                 <PrimaryButton
                     :class="{ 'opacity-25': form.processing }"
-                    :disabled="form.processing"
+                    :disabled="form.processing || !canSubmit"
                 >
-                    Email Password Reset Link
+                    Continue
                 </PrimaryButton>
             </div>
         </form>

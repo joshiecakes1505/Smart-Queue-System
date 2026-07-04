@@ -16,6 +16,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/services', [MobileQueueController::class, 'services']);
 
+    Route::get('/dashboard', [MobileQueueController::class, 'dashboard']);
+
     Route::post('/queues', [MobileQueueController::class, 'store']);
 
 });

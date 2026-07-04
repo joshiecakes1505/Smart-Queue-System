@@ -69,17 +69,21 @@ const assignCashier = (windowId) => {
 
 const roleLabel = (user) => user?.role?.name || 'n/a';
 
-const deleteUser = async (user) => {
+const toggleUserStatus = async (user) => {
   if (user.id === props.authUserId) {
     return;
   }
 
+  const isDisabled = user.disabled_at !== null;
+
   const confirmation = await swal?.fire({
     icon: 'warning',
-    title: 'Delete this account?',
-    text: `This action will permanently delete ${user.name}'s account.`,
+    title: isDisabled ? 'Enable this account?' : 'Disable this account?',
+    text: isDisabled
+      ? `This action will enable ${user.name}'s account and allow sign-ins again.`
+      : `This action will disable ${user.name}'s account and block future sign-ins.`,
     showCancelButton: true,
-    confirmButtonText: 'Yes, delete account',
+    confirmButtonText: isDisabled ? 'Yes, enable account' : 'Yes, disable account',
     cancelButtonText: 'Cancel',
     confirmButtonColor: '#b91c1c',
     cancelButtonColor: '#6b7280',
@@ -92,26 +96,49 @@ const deleteUser = async (user) => {
 
   deletingUserId.value = user.id;
 
-  router.delete(route('admin.users.destroy', user.id), {
+  const request = isDisabled
+    ? router.patch(route('admin.users.enable', user.id), {}, {
+      preserveScroll: true,
+      onSuccess: () => {
+        swal?.fire({
+          icon: 'success',
+          title: 'User enabled',
+          text: 'The user account has been enabled.',
+        });
+      },
+      onError: (errors) => {
+        swal?.fire({
+          icon: 'error',
+          title: 'Enable failed',
+          text: errors?.user || 'Unable to enable this account right now.',
+        });
+      },
+      onFinish: () => {
+        deletingUserId.value = null;
+      },
+    })
+    : router.delete(route('admin.users.destroy', user.id), {
     preserveScroll: true,
     onSuccess: () => {
       swal?.fire({
         icon: 'success',
-        title: 'User deleted',
-        text: 'The user account has been removed.',
+        title: 'User disabled',
+        text: 'The user account has been disabled.',
       });
     },
     onError: (errors) => {
       swal?.fire({
         icon: 'error',
-        title: 'Delete failed',
-        text: errors?.user || 'Unable to delete this account right now.',
+        title: 'Disable failed',
+        text: errors?.user || 'Unable to disable this account right now.',
       });
     },
     onFinish: () => {
       deletingUserId.value = null;
     },
   });
+
+  return request;
 };
 
 usePolling(() => {
@@ -168,16 +195,26 @@ usePolling(() => {
                       type="button"
                       :disabled="deletingUserId === user.id"
                       class="inline-flex items-center rounded-lg border border-red-600 px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-600 hover:text-white disabled:opacity-50"
-                      @click="deleteUser(user)"
+                      @click="toggleUserStatus(user)"
                     >
-                      <span v-if="deletingUserId === user.id">Deleting...</span>
-                      <span v-else>Delete</span>
+                      <span v-if="deletingUserId === user.id">
+                        {{ user.disabled_at ? 'Enabling...' : 'Disabling...' }}
+                      </span>
+                      <span v-else>
+                        {{ user.disabled_at ? 'Enable' : 'Disable' }}
+                      </span>
                     </button>
                     <span
                       v-if="user.id === authUserId"
                       class="text-xs font-medium uppercase tracking-wide text-gray-400"
                     >
                       Current Account
+                    </span>
+                    <span
+                      v-else-if="user.disabled_at"
+                      class="inline-flex items-center rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700"
+                    >
+                      Disabled
                     </span>
                   </div>
                 </td>
