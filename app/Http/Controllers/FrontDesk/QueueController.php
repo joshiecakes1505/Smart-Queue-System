@@ -39,7 +39,7 @@ class QueueController extends Controller
             });
         
         $totalWaiting = Queue::query()->where('status', Queue::STATUS_WAITING)->count();
-        $totalServedToday = Queue::query()->whereDate('end_time', today())
+        $totalServedToday = Queue::query()->whereDate('end_time', '=', today(), 'and')
             ->where('status', Queue::STATUS_COMPLETED)
             ->count();
         
@@ -72,7 +72,7 @@ class QueueController extends Controller
         }
 
         $categoriesById = ServiceCategory::query()
-            ->whereIn('id', $serviceCategoryIds->all())
+            ->whereIn('id', $serviceCategoryIds->all(), 'and', false)
             ->get(['id', 'name'])
             ->keyBy('id');
 
