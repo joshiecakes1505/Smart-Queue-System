@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Events\DisplayQueuesUpdated;
+use App\Events\QueueStatusChanged;
 use App\Models\Queue;
 use App\Models\QueueCounter;
 use App\Models\QueueLog;
@@ -73,8 +73,6 @@ class QueueService
             return $queue;
         });
 
-        $this->broadcastDisplayRefresh($queue, 'created');
-
         return $queue;
     }
 
@@ -125,12 +123,10 @@ class QueueService
                 'meta' => ['window_id' => $windowId],
             ]);
 
+            $this->broadcastQueueStatusChanged($next);
+
             return $next;
         });
-
-        if ($next) {
-            $this->broadcastDisplayRefresh($next, 'called');
-        }
 
         return $next;
     }
@@ -156,7 +152,7 @@ class QueueService
             'performed_by' => $performedBy,
         ]);
 
-        $this->broadcastDisplayRefresh($queue, 'skipped');
+        $this->broadcastQueueStatusChanged($queue);
 
         return $queue;
     }
@@ -173,8 +169,6 @@ class QueueService
             'action' => 'recalled',
             'performed_by' => $performedBy,
         ]);
-
-        $this->broadcastDisplayRefresh($queue, 'recalled');
 
         return $queue;
     }
@@ -204,7 +198,7 @@ class QueueService
             ],
         ]);
 
-        $this->broadcastDisplayRefresh($queue, 'completed');
+        $this->broadcastQueueStatusChanged($queue);
 
         return $queue;
     }
@@ -235,7 +229,7 @@ class QueueService
             'performed_by' => $performedBy,
         ]);
 
-        $this->broadcastDisplayRefresh($queue, 'reinstated');
+        $this->broadcastQueueStatusChanged($queue);
 
         return $queue;
     }
@@ -271,10 +265,10 @@ class QueueService
         return $counter;
     }
 
-    private function broadcastDisplayRefresh(?Queue $queue = null, ?string $reason = null): void
+    public function broadcastQueueStatusChanged(Queue $queue): void
     {
         try {
-            DisplayQueuesUpdated::dispatch($reason, $queue?->id);
+            QueueStatusChanged::dispatch($queue->id, $queue->status);
         } catch (\Throwable $e) {
             report($e);
         }
