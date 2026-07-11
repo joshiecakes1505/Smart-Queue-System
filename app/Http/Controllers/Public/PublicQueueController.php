@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Public;
 
-use App\Events\DisplayQueuesUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\CashierWindow;
 use App\Models\Queue;
@@ -183,11 +182,7 @@ class PublicQueueController extends Controller
             ],
         ]);
 
-        try {
-            DisplayQueuesUpdated::dispatch('cancelled', $queue->id);
-        } catch (\Throwable $e) {
-            report($e);
-        }
+        $this->queueService->broadcastQueueStatusChanged($queue);
 
         return response()->json([
             'ok' => true,
