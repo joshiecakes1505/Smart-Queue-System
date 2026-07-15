@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { usePolling } from '@/Composables/usePolling'
 import { Head } from '@inertiajs/vue3'
+import { formatManilaTime } from '@/Utils/dateTime'
 import {
   announceQueue,
   getLastAnnouncedQueues,
@@ -144,12 +145,9 @@ const disconnectDisplayRealtime = () => {
 }
 
 const formatTime = (timestamp) => {
-  if (!timestamp) return '—';
-  return new Date(timestamp).toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
+  return formatManilaTime(timestamp, {
     second: '2-digit',
-  });
+  })
 };
 
 const startClock = () => {

@@ -3,6 +3,7 @@ import { computed, inject, ref } from 'vue'
 import { Link } from '@inertiajs/vue3'
 import ChatbotWidget from '@/Components/ChatbotWidget.vue'
 import { usePolling } from '@/Composables/usePolling'
+import { formatManilaTime } from '@/Utils/dateTime'
 
 const props = defineProps({ queue_number: String })
 
@@ -73,12 +74,7 @@ const statusClass = computed(() => {
 
 const estimatedServedTimeLabel = computed(() => {
   const value = queueData.value?.estimated_served_at
-  if (!value) return '—'
-
-  return new Date(value).toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  return formatManilaTime(value)
 })
 
 const fetchQueueData = async () => {

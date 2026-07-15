@@ -3,6 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { useForm, usePage, router } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import { usePolling } from '@/Composables/usePolling';
+import { formatManilaTime } from '@/Utils/dateTime';
 
 const props = defineProps({
     serviceCategories: {
@@ -56,10 +57,7 @@ const submit = () => {
 };
 
 const formatTime = (datetime) => {
-    return new Date(datetime).toLocaleTimeString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit',
-    });
+    return formatManilaTime(datetime);
 };
 
 const queueNumberClass = (clientType) => {

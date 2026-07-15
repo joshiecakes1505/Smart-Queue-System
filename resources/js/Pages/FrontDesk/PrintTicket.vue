@@ -5,6 +5,7 @@ import { onMounted } from 'vue';
 import Swal from 'sweetalert2';
 import { Head } from '@inertiajs/vue3';
 import { connectQZTray, printQueueReceipt } from '@/Services/ReceiptPrinter';
+import { formatManilaDateTime } from '@/Utils/dateTime';
 
 const props = defineProps({
     queue: {
@@ -79,13 +80,7 @@ onMounted(async () => {
 });
 
 const formatDate = (datetime) => {
-    return new Date(datetime).toLocaleString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-    });
+    return formatManilaDateTime(datetime);
 };
 
 const clientTypeLabel = (type) => {
