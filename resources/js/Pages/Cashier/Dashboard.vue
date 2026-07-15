@@ -3,6 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { router } from '@inertiajs/vue3';
 import { inject, onBeforeUnmount, onMounted, ref } from 'vue';
 import { usePolling } from '@/Composables/usePolling';
+import { formatManilaTime } from '@/Utils/dateTime';
 
 const props = defineProps({
     window: Object,
@@ -417,10 +418,7 @@ const getStatusColor = (status) => {
 };
 
 const formatTime = (datetime) => {
-    return new Date(datetime).toLocaleTimeString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit',
-    });
+    return formatManilaTime(datetime);
 };
 
 const queueTheme = (clientType) => {

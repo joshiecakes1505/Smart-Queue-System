@@ -1,6 +1,7 @@
 const cmd = (...bytes) => String.fromCharCode(...bytes);
 const line = (text = '') => `${String(text)}\n`;
 const bytesToString = (bytes) => Array.from(bytes, (byte) => String.fromCharCode(byte)).join('');
+const MANILA_TIME_ZONE = 'Asia/Manila';
 
 const normalizeQueue = (queue = {}) => ({
     number: queue.number || queue.queue_number || 'N/A',
@@ -22,6 +23,7 @@ const formatDateTime = (value) => {
         day: '2-digit',
         hour: '2-digit',
         minute: '2-digit',
+        timeZone: MANILA_TIME_ZONE,
     });
 };
 

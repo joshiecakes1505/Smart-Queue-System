@@ -1,5 +1,6 @@
 const PRINTER_NAME = 'POS58';
 const ENCODING = 'UTF-8';
+const MANILA_TIME_ZONE = 'Asia/Manila';
 
 const cmd = (...bytes) => String.fromCharCode(...bytes);
 const textLine = (value = '') => `${String(value)}\n`;
@@ -96,7 +97,7 @@ const printReceipt = async (queuePayload = {}) => {
         const receiptDate = new Date(queue.created_at);
         const formattedDate = Number.isNaN(receiptDate.getTime())
             ? queue.created_at
-            : receiptDate.toLocaleString();
+            : receiptDate.toLocaleString('en-PH', { timeZone: MANILA_TIME_ZONE });
 
         const qrValue = String(queue.qr_code || queue.number).trim();
         const config = qz.configs.create(printerName, { encoding: ENCODING });
