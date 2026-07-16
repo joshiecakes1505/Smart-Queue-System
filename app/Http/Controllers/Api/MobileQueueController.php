@@ -131,16 +131,16 @@ class MobileQueueController extends Controller
 
     public function getTodayQueueStatus() {
         $queues = Queue::query()
-            ->where('created_at', today())
+            ->whereDate('created_at', today())
             ->orderBy('created_at', 'desc')
             ->get([
                 'id',
                 'status',
             ]);
         
-        return response()->json([
+        return response()->json(
             $queues,
-        ]);
+        );
     }
 
     public function todayQueues() 
