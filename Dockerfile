@@ -1,13 +1,23 @@
 # Stage 1 - Build Frontend (Vite)
 FROM node:22 AS frontend
+
+# Install Composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
 WORKDIR /app
 
-# Copy package files and install dependencies
+# Copy Composer files and install PHP dependencies (creates vendor/)
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --prefer-dist --no-interaction --no-scripts
+
+# Copy package files and install Node dependencies
 COPY package*.json ./
 RUN npm install
 
-# Copy application source and build
+# Copy application source
 COPY . .
+
+# Build frontend
 RUN npm run build
 
 # Stage 2 - Backend (Laravel + PHP + Composer)
@@ -26,11 +36,11 @@ WORKDIR /var/www
 # Copy application files
 COPY . .
 
-# Copy built frontend from Stage 1
-COPY --from=frontend /app/public/dist ./public/dist
-
 # Install PHP dependencies
 RUN composer install --no-dev --optimize-autoloader
+
+# Copy built frontend
+COPY --from=frontend /app/public/dist ./public/dist
 
 # Laravel setup
 RUN php artisan config:clear && \
