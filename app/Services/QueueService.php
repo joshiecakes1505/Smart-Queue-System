@@ -122,9 +122,7 @@ class QueueService
                 'performed_by' => $performedBy,
                 'meta' => ['window_id' => $windowId],
             ]);
-
-            $this->broadcastQueueStatusChanged($next);
-
+        
             return $next;
         });
 
@@ -151,8 +149,6 @@ class QueueService
             'action' => 'skipped',
             'performed_by' => $performedBy,
         ]);
-
-        $this->broadcastQueueStatusChanged($queue);
 
         return $queue;
     }
@@ -197,9 +193,6 @@ class QueueService
                 'duration_seconds' => $queue->end_time->diffInSeconds($queue->start_time),
             ],
         ]);
-
-        $this->broadcastQueueStatusChanged($queue);
-
         return $queue;
     }
 
@@ -228,8 +221,6 @@ class QueueService
             'action' => 'reinstated',
             'performed_by' => $performedBy,
         ]);
-
-        $this->broadcastQueueStatusChanged($queue);
 
         return $queue;
     }
@@ -265,12 +256,4 @@ class QueueService
         return $counter;
     }
 
-    public function broadcastQueueStatusChanged(Queue $queue): void
-    {
-        try {
-            QueueStatusChanged::dispatch($queue->id, $queue->status);
-        } catch (\Throwable $e) {
-            report($e);
-        }
-    }
 }

@@ -129,18 +129,17 @@ class MobileQueueController extends Controller
             ->all();
     }
 
-    public function dashboard()
-    {
-        $today = now()->toDateString();
-
+    public function getTodayQueueStatus() {
+        $queues = Queue::query()
+            ->where('created_at', today())
+            ->orderBy('created_at', 'desc')
+            ->get([
+                'id',
+                'status',
+            ]);
+        
         return response()->json([
-            'waiting' => Queue::query()
-                ->where('status', Queue::STATUS_WAITING)
-                ->count(),
-            'completed' => Queue::query()
-                ->whereDate('created_at', '=', $today, 'and')
-                ->where('status', Queue::STATUS_COMPLETED)
-                ->count(),
+            $queues,
         ]);
     }
 

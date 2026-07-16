@@ -6,23 +6,19 @@ use App\Http\Controllers\Api\MobileQueueController;
 use App\Http\Controllers\Api\ProfileController;
 
 //api login route
-// Route::middleware('auth:sanctum')->group(function (){
-//     Route::post('/login', [AppAuthController::class, 'login']);
-// });
+Route::post('/login', [AppAuthController::class, 'login']);
 
 Route::middleware('auth:sanctum')->group(function () {
-  Route::post('/login', [AppAuthController::class, 'login']);
-  Route::post('/logout', [AppAuthController::class, 'logout']);
-});
 
-
-Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/logout', [AppAuthController::class, 'logout']);
 
     Route::get('/services', [MobileQueueController::class, 'services']);
 
     Route::get('/queues/today', [MobileQueueController::class, 'todayQueues']);
 
     Route::get('/dashboard', [MobileQueueController::class, 'dashboard']);
+
+    Route::get('/queues/today/status', [MobileQueueController::class, 'getTodayQueueStatus']);
 
     Route::post('/queues', [MobileQueueController::class, 'store']);
 

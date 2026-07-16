@@ -1,1 +1,0 @@
-import{i as s,j as a,f as r,a as t,o}from"./app-BwRCN-cW.js";const i={class:"p-4"},m={__name:"Edit",props:{user:Object},setup(l){return s("$swal"),a({name:user.name,email:user.email,role_id:user.role_id}),(n,e)=>(o(),r("div",i,[...e[0]||(e[0]=[t("h1",{class:"text-xl"},"Edit User",-1)])]))}};export{m as default};

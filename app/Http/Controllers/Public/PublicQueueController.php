@@ -182,8 +182,6 @@ class PublicQueueController extends Controller
             ],
         ]);
 
-        $this->queueService->broadcastQueueStatusChanged($queue);
-
         return response()->json([
             'ok' => true,
             'message' => 'Queue cancelled successfully.',
