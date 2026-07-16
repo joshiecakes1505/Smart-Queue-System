@@ -1,8 +1,12 @@
 # Stage 1 - Build Frontend (Vite)
-FROM node:18 AS frontend
+FROM node:22 AS frontend
 WORKDIR /app
+
+# Copy package files and install dependencies
 COPY package*.json ./
 RUN npm install
+
+# Copy application source and build
 COPY . .
 RUN npm run build
 
@@ -19,7 +23,7 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www
 
-# Copy app files
+# Copy application files
 COPY . .
 
 # Copy built frontend from Stage 1
