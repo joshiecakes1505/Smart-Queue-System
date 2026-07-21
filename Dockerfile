@@ -1,9 +1,6 @@
-# -----------------------------
-# Stage 1 - Build Laravel + Vite
-# -----------------------------
-FROM php:8.2-cli AS builder
+FROM php:8.2-cli
 
-# Install system packages
+# 1. Install system dependencies required for Laravel & Node
 RUN apt-get update && apt-get install -y \
     git \
     unzip \
@@ -12,52 +9,32 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     libonig-dev \
     zip \
-    gnupg \
-    && docker-php-ext-install pdo pdo_mysql mbstring zip
+    && docker-php-ext-install pdo pdo_mysql mbstring zip \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install Node.js 22
+# 2. Install Node.js 22 (For compiling Vite assets)
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get install -y nodejs
 
-# Install Composer
+# 3. Install Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www
 
-# Copy project
+# 4. Copy application source code
 COPY . .
 
-# Install PHP dependencies (creates vendor/)
-RUN composer install \
-    --no-dev \
-    --optimize-autoloader \
-    --no-interaction
-
-# Install Node dependencies
+# 5. Install production PHP and Node dependencies
+RUN composer install --no-dev --optimize-autoloader --no-interaction
 RUN npm install
 
-# Build frontend
+# 6. Compile Vite assets (Creates public/build)
 RUN npm run build
 
+# 7. Optimize Laravel cache
+RUN php artisan config:cache && \
+    php artisan route:cache && \
+    php artisan view:cache
 
-# -----------------------------
-# Stage 2 - Runtime
-# -----------------------------
-FROM php:8.2-fpm
-
-RUN apt-get update && apt-get install -y \
-    libzip-dev \
-    libpq-dev \
-    libonig-dev \
-    zip \
-    && docker-php-ext-install pdo pdo_mysql mbstring zip
-
-WORKDIR /var/www
-
-COPY --from=builder /var/www .
-
-RUN php artisan config:clear && \
-    php artisan route:clear && \
-    php artisan view:clear
-
-CMD ["php-fpm"]
+# 8. Expose Laravel via HTTP server bound to Railway's dynamic port
+CMD php artisan serve --host=0.0.0.0 --port=$PORT
