@@ -139,7 +139,10 @@ class MobileQueueController extends Controller
             ]);
         
         return response()->json(
-            $queues,
+              $queues->map(fn ($queue) => [
+                    'id' => $queue->id,
+                    'status' => $queue->status,
+                ])
         );
     }
 
@@ -150,32 +153,26 @@ class MobileQueueController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        return response()->json([
+        return response()->json(
             $queues->map(function ($queue) {
                 return [
                     'id' => $queue->id,
-
                     'queue_number' => $queue->queue_number,
-
-                    'tracking_url' => URL::signedRoute('public.queue.show', ['queue_number' => $queue->queue_number]),
-
+                    'tracking_url' => URL::signedRoute(
+                        'public.queue.show',
+                        ['queue_number' => $queue->queue_number]
+                    ),
                     'client_name' => $queue->client_name,
-
                     'client_type' => $queue->client_type,
-
                     'service' => [
                         'id' => $queue->serviceCategory->id,
                         'name' => $queue->serviceCategory->name,
                         'prefix' => $queue->serviceCategory->prefix,
                     ],
-
                     'status' => $queue->status,
-
-                    'created_at' => $queue->created_at?->format(
-                        'F d, Y h:i A'
-                    ),
+                    'created_at' => $queue->created_at?->format('F d, Y h:i A'),
                 ];
             })
-        ]);    
+        );    
     }
 }
