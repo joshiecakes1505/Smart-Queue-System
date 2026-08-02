@@ -232,10 +232,6 @@ class QueueSchedulingService
 
         $freeWindowIds = array_values(array_diff($activeWindowIds, $busyWindowIds));
 
-        if (empty($freeWindowIds)) {
-            return [];
-        }
-
         // Actual call-time usage never scopes by service category (the Cashier
         // dashboard always posts window_id only), so the preview mirrors that.
         $regularsPerCycle = $this->resolveRegularsPerCycle(null);
@@ -254,11 +250,10 @@ class QueueSchedulingService
         $consumed = [];
         $orderedIds = [];
 
-        // Exactly one pick per currently-free window. There is no second
-        // "round": once a free window calls someone it becomes busy for an
-        // unknown duration, and we have no way to predict when any busy
-        // window (including one that just picked here) frees up next, so
-        // projecting further picks would just be fiction.
+        // Phase 1: exactly one pick per currently-free window. This is the
+        // part that must be exact — only a free window can call someone
+        // right now, so these are the entries "Up Next" is allowed to match
+        // against a real cashier (window 1, window 2, ...).
         foreach ($freeWindowIds as $windowId) {
             if (count($orderedIds) >= $limit) {
                 break;
@@ -270,6 +265,23 @@ class QueueSchedulingService
                 $orderedIds[] = $pickedId;
                 $consumed[$pickedId] = true;
             }
+        }
+
+        // Phase 2: fill the rest of "Next in Queue" as a general priority/
+        // regular-cycle projection over whoever is left. We can't say which
+        // window calls these (a window only frees up at an unknowable time),
+        // so this is informational ordering, not a per-window guarantee.
+        while (count($orderedIds) < $limit) {
+            $available = array_filter($pool, fn (Queue $q) => !isset($consumed[$q->id]));
+
+            $pickedId = $this->pickFromCandidates($available, $regularsPerCycle, $regularServedInCycle);
+
+            if ($pickedId === null) {
+                break;
+            }
+
+            $orderedIds[] = $pickedId;
+            $consumed[$pickedId] = true;
         }
 
         if (empty($orderedIds)) {
