@@ -63,5 +63,6 @@ class Kernel extends HttpKernel
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         // Role middleware added for role-based access control
         'role' => \App\Http\Middleware\RoleMiddleware::class,
+        'queue.token' => \App\Http\Middleware\EnsureQueueTrackingToken::class,
     ];
 }

@@ -9,7 +9,7 @@ import {
   setLastAnnouncedQueues,
 } from '@/Services/QueueAnnouncement'
 
-const data = ref({ windows: [], next_queues: [], timestamp: null })
+const data = ref({ windows: [], next_queues: [], reinstated_queues: [], timestamp: null })
 const refreshIntervalMs = 5000
 const isFullscreen = ref(false)
 const hasAnnouncementBaseline = ref(false)
@@ -32,14 +32,22 @@ const hasAnyWaitingQueue = computed(() => {
   return Array.isArray(data.value.next_queues) && data.value.next_queues.length > 0
 })
 
+const hasAnyReinstatableQueue = computed(() => {
+  return Array.isArray(data.value.reinstated_queues) && data.value.reinstated_queues.length > 0
+})
+
 const isSystemIdle = computed(() => {
-  return !hasAnyCurrentlyServedQueue.value && !hasAnyWaitingQueue.value
+  return !hasAnyCurrentlyServedQueue.value && !hasAnyWaitingQueue.value && !hasAnyReinstatableQueue.value
 })
 
 // Display-only split of the existing next_queues list: the immediate next
 // queue gets its own highlighted container, the rest stay in the list below.
 const upNextQueue = computed(() => data.value.next_queues[0] || null)
 const upcomingQueues = computed(() => data.value.next_queues.slice(1, 6))
+
+// TV layout has a fixed side-panel height, so cap how many reinstated rows
+// render at once (backend already caps the raw list at 10).
+const visibleReinstatedQueues = computed(() => (data.value.reinstated_queues || []).slice(0, 5))
 
 const priorityLegend = [
   { label: 'Senior Citizen / High Priority', swatch: 'bg-blue-700' },
@@ -273,11 +281,11 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-white flex flex-col">
+  <div class="h-screen w-screen bg-white flex flex-col overflow-hidden">
     <Head title="Queue Display" />
-    
+
     <!-- Maroon Header -->
-    <header class="relative bg-[#800000] text-white py-3 sm:py-4">
+    <header class="relative shrink-0 bg-[#800000] text-white py-3 sm:py-4">
       <div class="container mx-auto px-4 sm:px-8">
         <div class="flex flex-col gap-4 lg:flex-row lg:justify-between lg:items-center">
           <div>
@@ -312,8 +320,8 @@ onBeforeUnmount(() => {
 
     <!-- Main Content -->
     <main
-      class="flex-1"
-      :class="isSystemIdle ? 'w-full p-0' : 'container mx-auto px-4 sm:px-8 py-6 sm:py-8'"
+      class="flex-1 min-h-0 overflow-hidden flex flex-col"
+      :class="isSystemIdle ? 'w-full p-0' : 'container mx-auto px-4 sm:px-8 py-3 sm:py-4'"
     >
       <div v-if="isSystemIdle" class="h-full w-full overflow-hidden bg-black">
         <video
@@ -328,114 +336,145 @@ onBeforeUnmount(() => {
         </video>
       </div>
 
-      <template v-else>
-        <!-- Windows Grid -->
-        <div class="mb-12">
-          <div class="mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <h2 class="text-2xl sm:text-3xl font-bold text-[#800000]">Now Serving</h2>
+      <div v-else class="flex-1 min-h-0 flex flex-col lg:flex-row gap-4 lg:gap-6">
+        <!-- Now Serving (primary focal area) -->
+        <section class="flex-1 min-h-0 min-w-0 flex flex-col lg:basis-2/3">
+          <div class="shrink-0 mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <h2 class="text-xl sm:text-2xl lg:text-3xl font-bold text-[#800000]">Now Serving</h2>
 
             <!-- Color Legend -->
-            <div class="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-gray-600">
+            <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs sm:text-sm text-gray-600">
               <span
                 v-for="item in priorityLegend"
                 :key="item.label"
                 class="flex items-center gap-2"
               >
-                <span class="inline-block h-3.5 w-3.5 rounded-full" :class="item.swatch"></span>
+                <span class="inline-block h-3 w-3 rounded-full" :class="item.swatch"></span>
                 {{ item.label }}
               </span>
             </div>
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
-            <div 
-              v-for="window in data.windows" 
-              :key="window.id"
-              class="bg-white border-4 border-[#800000] rounded-lg p-4 sm:p-6"
+          <div class="flex-1 min-h-0 overflow-hidden">
+            <div
+              v-if="data.windows.length > 0"
+              class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 auto-rows-fr gap-3 lg:gap-4 h-full"
             >
-              <!-- Window Name -->
-              <div class="bg-[#800000] text-white text-center py-2.5 rounded-lg mb-4">
-                <h3 class="text-2xl sm:text-3xl lg:text-4xl font-bold">{{ window.name }}</h3>
-              </div>
+              <div
+                v-for="window in data.windows"
+                :key="window.id"
+                class="bg-white border-4 border-[#800000] rounded-lg p-3 sm:p-4 flex flex-col justify-center min-h-0"
+              >
+                <!-- Window Name -->
+                <div class="shrink-0 bg-[#800000] text-white text-center py-1.5 rounded-lg mb-2">
+                  <h3 class="text-lg sm:text-xl lg:text-2xl font-bold">{{ window.name }}</h3>
+                </div>
 
-              <!-- Current Queue -->
-              <div class="text-center mb-3">
-                <p class="text-sm text-gray-600 mb-2">NOW SERVING</p>
-                <div
-                  class="rounded-lg py-6 sm:py-7 lg:py-8"
-                  :class="window.current ? queueTheme(window.current?.client_type).calledBg : 'bg-[#FFC107]'"
-                >
-                  <p
-                    class="text-6xl sm:text-7xl lg:text-8xl font-bold leading-none"
-                    :class="window.current ? 'text-white' : 'text-[#800000]'"
+                <!-- Current Queue -->
+                <div class="text-center mb-2">
+                  <p class="text-xs text-gray-600 mb-1">NOW SERVING</p>
+                  <div
+                    class="rounded-lg py-3 sm:py-4 lg:py-5"
+                    :class="window.current ? queueTheme(window.current?.client_type).calledBg : 'bg-[#FFC107]'"
                   >
-                    {{ window.current?.queue_number ?? '—' }}
-                  </p>
+                    <p
+                      class="text-4xl sm:text-5xl lg:text-6xl font-bold leading-none"
+                      :class="window.current ? 'text-white' : 'text-[#800000]'"
+                    >
+                      {{ window.current?.queue_number ?? '—' }}
+                    </p>
+                  </div>
+                </div>
+
+                <!-- Queue Details -->
+                <div class="shrink-0 text-center text-gray-700 space-y-0.5">
+                  <p class="text-sm sm:text-base font-semibold" :class="isWindowClosed(window) ? 'text-gray-500' : 'text-gray-700'">{{ windowPrimaryStatus(window) }}</p>
+                  <p class="text-xs sm:text-sm text-gray-500">{{ windowSecondaryStatus(window) }}</p>
                 </div>
               </div>
+            </div>
 
-              <!-- Queue Details -->
-              <div class="text-center text-gray-700 space-y-1">
-                <p class="text-lg font-semibold" :class="isWindowClosed(window) ? 'text-gray-500' : 'text-gray-700'">{{ windowPrimaryStatus(window) }}</p>
-                <p class="text-sm text-gray-500">{{ windowSecondaryStatus(window) }}</p>
+            <!-- No Windows Message -->
+            <div v-else class="h-full flex items-center justify-center">
+              <p class="text-gray-500 text-xl">No active windows</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Side Panel: Up Next / Next in Queue / Reinstated -->
+        <aside class="lg:basis-1/3 min-h-0 min-w-0 flex flex-col gap-3 lg:gap-4 overflow-hidden">
+          <!-- Up Next Highlight -->
+          <div
+            v-if="upNextQueue"
+            class="shrink-0 bg-white border-4 border-[#FFC107] rounded-lg p-3 sm:p-4 shadow-md"
+          >
+            <p class="text-xs font-semibold text-gray-600 text-center mb-2 tracking-wide uppercase">Up Next</p>
+            <div class="flex items-center justify-center gap-3">
+              <p
+                class="text-4xl sm:text-5xl font-bold leading-none"
+                :class="queueTheme(upNextQueue.client_type).numberText"
+              >
+                {{ upNextQueue.queue_number }}
+              </p>
+              <div class="text-left min-w-0">
+                <p class="text-sm sm:text-base font-semibold text-gray-700 truncate">{{ serviceCategoryLabel(upNextQueue) }}</p>
+                <p class="text-xs sm:text-sm text-gray-500 truncate">{{ clientTypeLabel(upNextQueue.client_type) }}</p>
               </div>
             </div>
           </div>
 
-          <!-- No Windows Message -->
-          <div v-if="data.windows.length === 0" class="text-center py-12">
-            <p class="text-gray-500 text-xl">No active windows</p>
-          </div>
-        </div>
+          <!-- Next in Queue -->
+          <div class="flex-[2] min-h-0 flex flex-col bg-gray-50 border-2 border-gray-200 rounded-lg p-3 sm:p-4 overflow-hidden">
+            <h3 class="shrink-0 text-base sm:text-lg font-bold text-[#800000] mb-2 text-center">Next in Queue</h3>
 
-        <!-- Up Next Highlight -->
-        <div
-          v-if="upNextQueue"
-          class="mb-6 bg-white border-4 border-[#FFC107] rounded-lg p-5 sm:p-6 shadow-md"
-        >
-          <p class="text-sm font-semibold text-gray-600 text-center mb-3 tracking-wide uppercase">Up Next</p>
-          <div class="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-8">
-            <p
-              class="text-6xl sm:text-7xl lg:text-8xl font-bold leading-none"
-              :class="queueTheme(upNextQueue.client_type).numberText"
-            >
-              {{ upNextQueue.queue_number }}
-            </p>
-            <div class="text-center sm:text-left">
-              <p class="text-lg sm:text-xl font-semibold text-gray-700">{{ serviceCategoryLabel(upNextQueue) }}</p>
-              <p class="text-sm sm:text-base text-gray-500">{{ clientTypeLabel(upNextQueue.client_type) }}</p>
+            <div v-if="upcomingQueues.length > 0" class="flex-1 min-h-0 overflow-hidden">
+              <ul class="h-full flex flex-col gap-1.5 sm:gap-2">
+                <li
+                  v-for="(queue, idx) in upcomingQueues"
+                  :key="queue.queue_number"
+                  class="flex-1 min-h-0 flex items-center gap-3 bg-white border border-[#e8d0d0] rounded-md px-3 py-1.5"
+                >
+                  <span class="text-xs text-gray-400 shrink-0">#{{ idx + 2 }}</span>
+                  <span class="text-lg sm:text-xl font-bold shrink-0" :class="queueTheme(queue.client_type).numberText">{{ queue.queue_number }}</span>
+                  <span class="text-xs sm:text-sm text-gray-600 truncate min-w-0">{{ serviceCategoryLabel(queue) }} · {{ clientTypeLabel(queue.client_type) }}</span>
+                </li>
+              </ul>
             </div>
-          </div>
-        </div>
 
-        <!-- Next in Queue -->
-        <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-5 sm:p-6">
-          <h3 class="text-xl sm:text-2xl font-bold text-[#800000] mb-5 text-center">Next in Queue</h3>
-
-          <div v-if="upcomingQueues.length > 0" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-            <div
-              v-for="(queue, idx) in upcomingQueues"
-              :key="queue.queue_number"
-              class="bg-white border-2 border-[#800000] rounded-lg p-4 sm:p-6 text-center"
-            >
-              <p class="text-xs text-gray-500 mb-2">Position {{ idx + 2 }}</p>
-              <p class="text-3xl sm:text-4xl font-bold leading-tight" :class="queueTheme(queue.client_type).numberText">{{ queue.queue_number }}</p>
-              <p class="text-sm text-gray-600 mt-2">{{ serviceCategoryLabel(queue) }}</p>
-              <p class="text-sm text-gray-500 mt-1">{{ clientTypeLabel(queue.client_type) }}</p>
+            <div v-else class="flex-1 min-h-0 flex items-center justify-center">
+              <p class="text-gray-500 text-sm">{{ upNextQueue ? 'No more queues waiting' : 'No queues waiting' }}</p>
             </div>
           </div>
 
-          <div v-else class="text-center py-8">
-            <p class="text-gray-500 text-lg">{{ upNextQueue ? 'No more queues waiting' : 'No queues waiting' }}</p>
+          <!-- Reinstated / Skipped Queues -->
+          <div
+            v-if="hasAnyReinstatableQueue"
+            class="flex-1 min-h-0 flex flex-col bg-amber-50 border-2 border-amber-300 rounded-lg p-3 sm:p-4 overflow-hidden"
+          >
+            <h3 class="shrink-0 text-base sm:text-lg font-bold text-amber-700 text-center">Skipped — Please Return</h3>
+            <p class="shrink-0 text-xs text-amber-700/80 text-center mb-2">Please wait for a cashier to reinstate you.</p>
+
+            <div class="flex-1 min-h-0 overflow-hidden">
+              <ul class="h-full flex flex-col gap-1.5 sm:gap-2">
+                <li
+                  v-for="queue in visibleReinstatedQueues"
+                  :key="queue.queue_number"
+                  class="flex-1 min-h-0 flex items-center gap-3 bg-white border border-amber-300 rounded-md px-3 py-1.5"
+                >
+                  <span class="text-lg sm:text-xl font-bold text-amber-600 shrink-0">{{ queue.queue_number }}</span>
+                  <span class="text-xs sm:text-sm text-gray-600 truncate min-w-0">{{ serviceCategoryLabel(queue) }} · {{ clientTypeLabel(queue.client_type) }}</span>
+                </li>
+              </ul>
+            </div>
           </div>
-        </div>
-      </template>
+        </aside>
+      </div>
     </main>
 
     <!-- Footer -->
-    <footer v-if="!isSystemIdle" class="bg-gray-100 py-4 mt-12">
+    <footer v-if="!isSystemIdle" class="shrink-0 bg-gray-100 py-1.5">
       <div class="container mx-auto px-4 sm:px-8 text-center">
-        <p class="text-sm text-gray-600">Auto-refresh fallback every 5 seconds</p>
+        <p class="text-xs text-gray-600">Auto-refresh fallback every 5 seconds</p>
       </div>
     </footer>
   </div>

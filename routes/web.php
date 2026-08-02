@@ -79,8 +79,10 @@ Route::get('/queue/{queue_number}', [PublicQueueController::class, 'showQueueByN
 Route::get('/public/queue/{queue_number}', function (string $queue_number) {
     return redirect()->to(URL::signedRoute('public.queue.show', ['queue_number' => $queue_number]), 301);
 })->name('public.queue.legacy');
-Route::get('/api/queue/{queue_number}/status', [PublicQueueController::class, 'getQueueData'])->name('api.queue.status');
-Route::post('/api/queue/{queue_number}/cancel', [PublicQueueController::class, 'cancelQueue'])->name('api.queue.cancel');
+Route::middleware('queue.token')->group(function () {
+    Route::get('/api/queue/{queue_number}/status', [PublicQueueController::class, 'getQueueData'])->name('api.queue.status');
+    Route::post('/api/queue/{queue_number}/cancel', [PublicQueueController::class, 'cancelQueue'])->name('api.queue.cancel');
+});
 
 // Display
 Route::get('/display', [DisplayController::class, 'index'])->name('display.index');
@@ -95,5 +97,3 @@ Route::get('/chatbot', [ChatbotController::class, 'index'])->name('chatbot.index
 Route::post('/api/chatbot/message', [ChatbotController::class, 'sendMessage'])->name('api.chatbot.message');
 Route::get('/api/chatbot/faq-topics', [ChatbotController::class, 'getFaqTopics'])->name('api.chatbot.faq-topics');
 Route::get('/api/chatbot/faq/{topicId}', [ChatbotController::class, 'getFaqTopic'])->name('api.chatbot.faq-topic');
-
-require __DIR__.'/auth.php';

@@ -154,32 +154,179 @@ class QueueSchedulingService
             ->orderBy('created_at', 'asc')
             ->first();
 
-        if (! $priorityQueue && ! $regularQueue) {
+        $regularServedInCycle = (int) ($counter->regular_served_in_cycle ?? 0);
+
+        $decision = $this->decideNextType($priorityQueue !== null, $regularQueue !== null, $regularServedInCycle, $regularsPerCycle);
+
+        if ($decision === null) {
             return null;
         }
 
-        $regularServedInCycle = (int) ($counter->regular_served_in_cycle ?? 0);
-
-        if ($priorityQueue && ($regularsPerCycle === 0 || $regularServedInCycle >= $regularsPerCycle)) {
-            $counter->regular_served_in_cycle = 0;
-            $counter->save();
-
-            return $priorityQueue;
-        }
-
-        if ($regularQueue) {
-            $counter->regular_served_in_cycle = $regularsPerCycle > 0
-                ? min($regularsPerCycle, $regularServedInCycle + 1)
-                : 0;
-            $counter->save();
-
-            return $regularQueue;
-        }
-
-        $counter->regular_served_in_cycle = 0;
+        $counter->regular_served_in_cycle = $this->nextCycleValue($decision, $regularsPerCycle, $regularServedInCycle);
         $counter->save();
 
-        return $priorityQueue;
+        return $decision === 'priority' ? $priorityQueue : $regularQueue;
+    }
+
+    /**
+     * The single source of truth for "priority or regular next", shared by the
+     * live scheduler (pickWeightedQueue) and the read-only Display preview
+     * (previewUpcomingQueues) so both always agree on the same call order.
+     */
+    private function decideNextType(bool $hasPriority, bool $hasRegular, int $regularServedInCycle, int $regularsPerCycle): ?string
+    {
+        if (!$hasPriority && !$hasRegular) {
+            return null;
+        }
+
+        if ($hasPriority && ($regularsPerCycle === 0 || $regularServedInCycle >= $regularsPerCycle)) {
+            return 'priority';
+        }
+
+        if ($hasRegular) {
+            return 'regular';
+        }
+
+        return 'priority';
+    }
+
+    private function nextCycleValue(string $decision, int $regularsPerCycle, int $regularServedInCycle): int
+    {
+        if ($decision === 'priority') {
+            return 0;
+        }
+
+        return $regularsPerCycle > 0
+            ? min($regularsPerCycle, $regularServedInCycle + 1)
+            : 0;
+    }
+
+    /**
+     * Read-only preview of the next N queues to be called, using the exact
+     * same window-scoping and priority/regular cycling rules as callNext(),
+     * simulated in memory (no counter or cashier_window_id writes) so the
+     * Display board's "Up Next" always matches what a cashier will actually call.
+     */
+    public function previewUpcomingQueues(int $limit = 6): array
+    {
+        $activeWindowIds = CashierWindow::query()
+            ->where('active', true)
+            ->whereNotNull('assigned_user_id')
+            ->orderBy('id')
+            ->pluck('id')
+            ->all();
+
+        if (empty($activeWindowIds)) {
+            return [];
+        }
+
+        // A window already serving someone (status=called) won't call again
+        // until that customer is done, at an unknowable future time — so it
+        // can't contribute a "next" pick right now. Only currently-free
+        // windows can.
+        $busyWindowIds = Queue::query()
+            ->where('status', Queue::STATUS_CALLED)
+            ->whereIn('cashier_window_id', $activeWindowIds)
+            ->pluck('cashier_window_id')
+            ->all();
+
+        $freeWindowIds = array_values(array_diff($activeWindowIds, $busyWindowIds));
+
+        if (empty($freeWindowIds)) {
+            return [];
+        }
+
+        // Actual call-time usage never scopes by service category (the Cashier
+        // dashboard always posts window_id only), so the preview mirrors that.
+        $regularsPerCycle = $this->resolveRegularsPerCycle(null);
+
+        $regularServedInCycle = (int) (QueueCounter::query()
+            ->whereDate('date', now()->toDateString())
+            ->whereNull('service_category_id')
+            ->value('regular_served_in_cycle') ?? 0);
+
+        $pool = Queue::query()
+            ->where('status', Queue::STATUS_WAITING)
+            ->orderBy('created_at', 'asc')
+            ->get(['id', 'client_type', 'cashier_window_id', 'created_at'])
+            ->all();
+
+        $consumed = [];
+        $orderedIds = [];
+
+        // Exactly one pick per currently-free window. There is no second
+        // "round": once a free window calls someone it becomes busy for an
+        // unknown duration, and we have no way to predict when any busy
+        // window (including one that just picked here) frees up next, so
+        // projecting further picks would just be fiction.
+        foreach ($freeWindowIds as $windowId) {
+            if (count($orderedIds) >= $limit) {
+                break;
+            }
+
+            $pickedId = $this->previewPickForWindow($pool, $consumed, (int) $windowId, $regularsPerCycle, $regularServedInCycle);
+
+            if ($pickedId !== null) {
+                $orderedIds[] = $pickedId;
+                $consumed[$pickedId] = true;
+            }
+        }
+
+        if (empty($orderedIds)) {
+            return [];
+        }
+
+        $queuesById = Queue::with('serviceCategory')->whereIn('id', $orderedIds)->get()->keyBy('id');
+
+        return collect($orderedIds)->map(fn ($id) => $queuesById[$id] ?? null)->filter()->values()->all();
+    }
+
+    /**
+     * @param  array<int, Queue>  $pool
+     * @param  array<int, bool>  $consumed
+     */
+    private function previewPickForWindow(array $pool, array &$consumed, int $windowId, int $regularsPerCycle, int &$regularServedInCycle): ?int
+    {
+        $available = array_filter($pool, fn (Queue $q) => !isset($consumed[$q->id]));
+
+        $windowScoped = array_filter($available, fn (Queue $q) => (int) $q->cashier_window_id === $windowId);
+
+        $pickedId = $this->pickFromCandidates($windowScoped, $regularsPerCycle, $regularServedInCycle);
+
+        if ($pickedId !== null) {
+            return $pickedId;
+        }
+
+        return $this->pickFromCandidates($available, $regularsPerCycle, $regularServedInCycle);
+    }
+
+    /**
+     * @param  array<int, Queue>  $candidates
+     */
+    private function pickFromCandidates(array $candidates, int $regularsPerCycle, int &$regularServedInCycle): ?int
+    {
+        $priority = null;
+        $regular = null;
+
+        foreach ($candidates as $candidate) {
+            if (in_array($candidate->client_type, Queue::PRIORITY_CLIENT_TYPES, true)) {
+                if ($priority === null || $candidate->created_at->lt($priority->created_at)) {
+                    $priority = $candidate;
+                }
+            } elseif ($regular === null || $candidate->created_at->lt($regular->created_at)) {
+                $regular = $candidate;
+            }
+        }
+
+        $decision = $this->decideNextType($priority !== null, $regular !== null, $regularServedInCycle, $regularsPerCycle);
+
+        if ($decision === null) {
+            return null;
+        }
+
+        $regularServedInCycle = $this->nextCycleValue($decision, $regularsPerCycle, $regularServedInCycle);
+
+        return $decision === 'priority' ? $priority->id : $regular->id;
     }
 
     private function resolveRegularsPerCycle(?int $serviceCategoryId): int

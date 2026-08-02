@@ -6,7 +6,7 @@ use App\Http\Controllers\Api\MobileQueueController;
 use App\Http\Controllers\Api\ProfileController;
 
 //api login route
-Route::post('/login', [AppAuthController::class, 'login']);
+Route::post('/login', [AppAuthController::class, 'login'])->middleware('throttle:5,1');
 
 Route::middleware('auth:sanctum')->group(function () {
 

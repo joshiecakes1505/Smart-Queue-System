@@ -77,7 +77,14 @@ class PublicQueueController extends Controller
      */
     public function showQueueByNumber($queue_number)
     {
-        return Inertia::render('Public/QueueStatus', ['queue_number' => $queue_number]);
+        $trackingToken = Queue::query()
+            ->where('queue_number', $queue_number)
+            ->value('tracking_token');
+
+        return Inertia::render('Public/QueueStatus', [
+            'queue_number' => $queue_number,
+            'tracking_token' => $trackingToken,
+        ]);
     }
 
     /**

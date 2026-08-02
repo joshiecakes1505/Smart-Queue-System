@@ -5,11 +5,16 @@ namespace App\Http\Controllers\Display;
 use App\Http\Controllers\Controller;
 use App\Models\CashierWindow;
 use App\Models\Queue;
+use App\Services\QueueSchedulingService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class DisplayController extends Controller
 {
+    public function __construct(private readonly QueueSchedulingService $scheduler)
+    {
+    }
+
     public function index()
     {
         return Inertia::render('Display/Board');
@@ -42,12 +47,7 @@ class DisplayController extends Controller
                 ];
             });
 
-        $nextQueues = Queue::where('status', Queue::STATUS_WAITING)
-            ->with(['serviceCategory'])
-            ->orderByRaw("CASE WHEN client_type IN ('senior_citizen', 'high_priority') THEN 0 ELSE 1 END")
-            ->orderBy('created_at', 'asc')
-            ->limit(5)
-            ->get()
+        $nextQueues = collect($this->scheduler->previewUpcomingQueues(5))
             ->map(function ($q) {
                 return [
                     'queue_number' => $q->queue_number,
@@ -58,9 +58,28 @@ class DisplayController extends Controller
                 ];
             });
 
+        // Same "eligible for reinstatement" set as the Cashier dashboard:
+        // skipped once, not yet reinstated by a cashier.
+        $reinstatedQueues = Queue::where('status', Queue::STATUS_SKIPPED)
+            ->where('skip_count', 1)
+            ->where('is_reinstated', false)
+            ->with('serviceCategory')
+            ->orderBy('updated_at', 'asc')
+            ->limit(10)
+            ->get()
+            ->map(function ($q) {
+                return [
+                    'queue_number' => $q->queue_number,
+                    'client_type' => $q->client_type,
+                    'service_category' => $q->serviceCategory->name ?? null,
+                    'transaction_service_categories' => $q->transaction_service_categories,
+                ];
+            });
+
         return response()->json([
             'windows' => $windows,
             'next_queues' => $nextQueues,
+            'reinstated_queues' => $reinstatedQueues,
             'timestamp' => now()->toIso8601String(),
         ]);
     }

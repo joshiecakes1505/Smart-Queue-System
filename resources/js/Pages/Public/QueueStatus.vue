@@ -5,7 +5,7 @@ import ChatbotWidget from '@/Components/ChatbotWidget.vue'
 import { usePolling } from '@/Composables/usePolling'
 import { formatManilaTime } from '@/Utils/dateTime'
 
-const props = defineProps({ queue_number: String })
+const props = defineProps({ queue_number: String, tracking_token: String })
 
 const queueData = ref(null)
 const liveData = ref({ windows: [] })
@@ -79,7 +79,7 @@ const estimatedServedTimeLabel = computed(() => {
 
 const fetchQueueData = async () => {
   try {
-    const response = await fetch(window.route('api.queue.status', { queue_number: props.queue_number }))
+    const response = await fetch(window.route('api.queue.status', { queue_number: props.queue_number, token: props.tracking_token }))
 
     if (!response.ok) {
       if (response.status === 410) {
@@ -176,7 +176,7 @@ const cancelQueue = async () => {
   cancelling.value = true
 
   try {
-    await window.axios.post(window.route('api.queue.cancel', { queue_number: props.queue_number }))
+    await window.axios.post(window.route('api.queue.cancel', { queue_number: props.queue_number, token: props.tracking_token }))
     await fetchAll()
     await swal?.fire({
       icon: 'success',
