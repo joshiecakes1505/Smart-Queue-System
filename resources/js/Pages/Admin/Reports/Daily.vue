@@ -1,7 +1,8 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { router } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { Chart } from 'chart.js/auto';
 import { usePolling } from '@/Composables/usePolling';
 
 const props = defineProps({
@@ -15,11 +16,6 @@ const selectedDate = ref(props.metrics.selected_date);
 const selectedPeriod = ref(props.metrics.selected_period || 'daily');
 const isApplyingFilter = ref(false);
 const isExportingPdf = ref(false);
-
-const maxWeekdayTrendCount = computed(() => {
-  const counts = props.metrics.weekday_trend?.map((row) => row.count) || [];
-  return Math.max(...counts, 1);
-});
 
 const applyDateFilter = () => {
   if (isApplyingFilter.value) {
@@ -81,7 +77,188 @@ const clientTypeLabel = (type) => {
   return map[type] || type;
 };
 
-const weekdayTrendWidth = (count) => `${(count / maxWeekdayTrendCount.value) * 100}%`;
+const STATUS_COLORS = {
+  waiting: '#FFC107',
+  called: '#2196F3',
+  completed: '#22C55E',
+  skipped: '#EF4444',
+};
+
+const CLIENT_TYPE_COLORS = {
+  student: '#800000',
+  parent: '#FFC107',
+  visitor: '#2196F3',
+  senior_citizen: '#22C55E',
+  high_priority: '#9C27B0',
+};
+
+const statusChartCanvas = ref(null);
+const clientChartCanvas = ref(null);
+const categoryChartCanvas = ref(null);
+const hourlyChartCanvas = ref(null);
+const weekdayChartCanvas = ref(null);
+
+let statusChart = null;
+let clientChart = null;
+let categoryChart = null;
+let hourlyChart = null;
+let weekdayChart = null;
+
+const buildStatusChart = () => {
+  const rows = props.metrics.status_breakdown;
+  const labels = rows.map((row) => statusLabel(row.status));
+  const data = rows.map((row) => row.count);
+  const colors = rows.map((row) => STATUS_COLORS[row.status] || '#9CA3AF');
+
+  if (statusChart) {
+    statusChart.data.labels = labels;
+    statusChart.data.datasets[0].data = data;
+    statusChart.data.datasets[0].backgroundColor = colors;
+    statusChart.update();
+    return;
+  }
+
+  statusChart = new Chart(statusChartCanvas.value, {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 0 }] },
+    options: { responsive: true, plugins: { legend: { position: 'bottom' } } },
+  });
+};
+
+const buildClientChart = () => {
+  const rows = props.metrics.client_breakdown;
+  const labels = rows.map((row) => clientTypeLabel(row.client_type));
+  const data = rows.map((row) => row.count);
+  const colors = rows.map((row) => CLIENT_TYPE_COLORS[row.client_type] || '#9CA3AF');
+
+  if (clientChart) {
+    clientChart.data.labels = labels;
+    clientChart.data.datasets[0].data = data;
+    clientChart.data.datasets[0].backgroundColor = colors;
+    clientChart.update();
+    return;
+  }
+
+  clientChart = new Chart(clientChartCanvas.value, {
+    type: 'pie',
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 0 }] },
+    options: { responsive: true, plugins: { legend: { position: 'bottom' } } },
+  });
+};
+
+const buildCategoryChart = () => {
+  const rows = props.metrics.service_category_breakdown;
+  const labels = rows.map((row) => row.service_category);
+  const totals = rows.map((row) => row.total);
+  const completed = rows.map((row) => row.completed);
+  const waiting = rows.map((row) => row.waiting);
+
+  if (categoryChart) {
+    categoryChart.data.labels = labels;
+    categoryChart.data.datasets[0].data = totals;
+    categoryChart.data.datasets[1].data = completed;
+    categoryChart.data.datasets[2].data = waiting;
+    categoryChart.update();
+    return;
+  }
+
+  categoryChart = new Chart(categoryChartCanvas.value, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Total', data: totals, backgroundColor: '#800000' },
+        { label: 'Completed', data: completed, backgroundColor: '#22C55E' },
+        { label: 'Waiting', data: waiting, backgroundColor: '#FFC107' },
+      ],
+    },
+    options: {
+      responsive: true,
+      scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+      plugins: { legend: { position: 'bottom' } },
+    },
+  });
+};
+
+const buildHourlyChart = () => {
+  const rows = props.metrics.hourly_data;
+  const labels = rows.map((row) => row.hour);
+  const data = rows.map((row) => row.count);
+
+  if (hourlyChart) {
+    hourlyChart.data.labels = labels;
+    hourlyChart.data.datasets[0].data = data;
+    hourlyChart.update();
+    return;
+  }
+
+  hourlyChart = new Chart(hourlyChartCanvas.value, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Queues Created',
+        data,
+        borderColor: '#800000',
+        backgroundColor: 'rgba(128, 0, 0, 0.1)',
+        fill: true,
+        tension: 0.3,
+      }],
+    },
+    options: {
+      responsive: true,
+      scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+      plugins: { legend: { display: false } },
+    },
+  });
+};
+
+const buildWeekdayChart = () => {
+  const rows = props.metrics.weekday_trend;
+  const labels = rows.map((row) => row.short_day);
+  const data = rows.map((row) => row.count);
+
+  if (weekdayChart) {
+    weekdayChart.data.labels = labels;
+    weekdayChart.data.datasets[0].data = data;
+    weekdayChart.update();
+    return;
+  }
+
+  weekdayChart = new Chart(weekdayChartCanvas.value, {
+    type: 'bar',
+    data: { labels, datasets: [{ label: 'Queues', data, backgroundColor: '#FFC107' }] },
+    options: {
+      responsive: true,
+      scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+      plugins: { legend: { display: false } },
+    },
+  });
+};
+
+const renderCharts = () => {
+  buildStatusChart();
+  buildClientChart();
+  buildCategoryChart();
+  buildHourlyChart();
+  buildWeekdayChart();
+};
+
+onMounted(() => {
+  renderCharts();
+});
+
+watch(() => props.metrics, () => {
+  renderCharts();
+}, { deep: true });
+
+onBeforeUnmount(() => {
+  statusChart?.destroy();
+  clientChart?.destroy();
+  categoryChart?.destroy();
+  hourlyChart?.destroy();
+  weekdayChart?.destroy();
+});
 
 usePolling(() => {
   return router.reload({
@@ -187,6 +364,9 @@ usePolling(() => {
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div class="bg-white rounded-lg shadow-sm p-6">
           <h2 class="text-xl font-semibold text-[#800000] mb-4">Status Breakdown</h2>
+          <div class="h-56 mb-4">
+            <canvas ref="statusChartCanvas"></canvas>
+          </div>
           <div class="space-y-2">
             <div
               v-for="row in metrics.status_breakdown"
@@ -201,6 +381,9 @@ usePolling(() => {
 
         <div class="bg-white rounded-lg shadow-sm p-6">
           <h2 class="text-xl font-semibold text-[#800000] mb-4">Client Type Breakdown</h2>
+          <div class="h-56 mb-4">
+            <canvas ref="clientChartCanvas"></canvas>
+          </div>
           <div class="space-y-2">
             <div
               v-for="row in metrics.client_breakdown"
@@ -217,6 +400,9 @@ usePolling(() => {
 
       <div class="bg-white rounded-lg shadow-sm p-6">
         <h2 class="text-xl font-semibold text-[#800000] mb-4">Service Category Breakdown</h2>
+        <div class="h-72 mb-4">
+          <canvas ref="categoryChartCanvas"></canvas>
+        </div>
         <div class="overflow-x-auto">
           <table class="w-full">
             <thead>
@@ -249,6 +435,9 @@ usePolling(() => {
       <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <div class="bg-white rounded-lg shadow-sm p-6">
           <h2 class="text-xl font-semibold text-[#800000] mb-4">Hourly Queue Volume</h2>
+          <div class="h-56 mb-4">
+            <canvas ref="hourlyChartCanvas"></canvas>
+          </div>
           <div class="overflow-x-auto">
             <table class="w-full">
               <thead>
@@ -281,19 +470,8 @@ usePolling(() => {
             </div>
           </div>
 
-          <div class="space-y-4">
-            <div v-for="row in metrics.weekday_trend" :key="row.day">
-              <div class="flex items-center justify-between gap-4 mb-2">
-                <span class="text-sm font-medium text-gray-700">{{ row.day }}</span>
-                <span class="text-sm font-semibold text-[#800000]">{{ row.count }}</span>
-              </div>
-              <div class="h-2.5 rounded-full bg-gray-100 overflow-hidden">
-                <div
-                  class="h-full rounded-full bg-[#FFC107] transition-all duration-300"
-                  :style="{ width: weekdayTrendWidth(row.count) }"
-                />
-              </div>
-            </div>
+          <div class="h-56">
+            <canvas ref="weekdayChartCanvas"></canvas>
           </div>
         </div>
       </div>

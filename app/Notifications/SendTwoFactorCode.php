@@ -6,6 +6,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\HtmlString;
 
 class SendTwoFactorCode extends Notification
 {
@@ -42,8 +43,8 @@ class SendTwoFactorCode extends Notification
 
         return (new MailMessage)
             ->subject($subject)
-            ->greeting("Maligayang araw po, {$notifiable->name}!")
-            ->line("Your two-factor authentication security code is: {$notifiable->two_factor_code}")
+            ->greeting('Maligayang araw po, ' . $notifiable->name . '!')
+            ->line(new HtmlString('Your two-factor authentication security code is: <strong style="font-size: 32px; font-weight: bold;">' . $notifiable->two_factor_code . '</strong>'))
             ->line('This code will expire in 10 minutes.')
             ->line($instruction);
     }
