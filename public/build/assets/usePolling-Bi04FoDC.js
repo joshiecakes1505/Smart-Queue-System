@@ -1,1 +1,0 @@
-import{A as s,B as i,r as l}from"./app-CvlaaBCn.js";function c(o,u=5e3){const t=l(!1);let e=null;const n=async()=>{t.value||(t.value=!0,await r())},a=()=>{t.value=!1,e&&clearTimeout(e)},r=async()=>{if(t.value)try{await o()}finally{e=setTimeout(r,u)}};return s(n),i(a),{start:n,stop:a,running:t}}export{c as u};
