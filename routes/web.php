@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\ServiceCategoryController as AdminServiceCategory
 use App\Http\Controllers\Admin\ReportController as AdminReportController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\BackupController as AdminBackupController;
+use App\Http\Controllers\Admin\MonitoringController as AdminMonitoringController;
 use App\Http\Controllers\FrontDesk\QueueController as FrontDeskQueueController;
 use App\Http\Controllers\Cashier\CashierController as CashierController;
 use App\Http\Controllers\Public\PublicQueueController as PublicQueueController;
@@ -43,10 +44,18 @@ Route::middleware(['auth:admin', 'role:admin'])->prefix('admin')->name('admin.')
     Route::post('cashier-windows/{cashierWindow}/assign', [AdminUserController::class, 'assignCashier'])->name('cashier-windows.assign');
     Route::post('users/{user}/reset-password', [AdminUserController::class, 'resetPassword'])->name('users.reset-password');
     Route::patch('users/{user}/enable', [AdminUserController::class, 'enable'])->name('users.enable');
+    Route::patch('users/{user}/archive', [AdminUserController::class, 'archive'])->name('users.archive');
+    Route::patch('users/{user}/unarchive', [AdminUserController::class, 'unarchive'])->name('users.unarchive');
+    Route::delete('users/{user}/delete-now', [AdminUserController::class, 'softDeleteNow'])->name('users.delete-now');
+    Route::patch('users/{id}/restore', [AdminUserController::class, 'restoreDeleted'])->name('users.restore');
     Route::resource('users', AdminUserController::class)->except(['show']);
     Route::resource('service-categories', AdminServiceCategoryController::class)->except(['show']);
     Route::get('reports/daily', [AdminReportController::class, 'daily'])->name('reports.daily');
     Route::get('reports/daily/pdf', [AdminReportController::class, 'dailyPdf'])->name('reports.daily.pdf');
+    Route::get('monitoring', [AdminMonitoringController::class, 'index'])->name('monitoring.index');
+    Route::patch('monitoring/{errorLog}/resolve', [AdminMonitoringController::class, 'resolve'])->name('monitoring.resolve');
+    Route::patch('monitoring/{errorLog}/unresolve', [AdminMonitoringController::class, 'unresolve'])->name('monitoring.unresolve');
+    Route::delete('monitoring/{errorLog}', [AdminMonitoringController::class, 'destroy'])->name('monitoring.destroy');
 });
 
 // Frontdesk routes (register queue)

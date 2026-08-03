@@ -89,6 +89,8 @@ class LoginRequest extends FormRequest
             ]);
         }
 
+        $user->recordLogin();
+
         $this->authenticatedGuard = $guard;
 
         RateLimiter::clear($this->throttleKey());

@@ -1,1 +1,0 @@
-const r="Asia/Manila",n=(t={})=>new Intl.DateTimeFormat("en-PH",{timeZone:r,...t}),i=(t,e={})=>t?n({hour:"2-digit",minute:"2-digit",...e}).format(new Date(t)):"—",a=(t,e={})=>t?n({year:"numeric",month:"long",day:"numeric",hour:"2-digit",minute:"2-digit",...e}).format(new Date(t)):"—";export{a,i as f};

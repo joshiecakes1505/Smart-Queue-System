@@ -27,7 +27,7 @@ class UserController extends Controller
 
     public function index()
     {
-        $users = User::with('role')->orderBy('name')->get();
+        $users = User::withTrashed()->with('role')->orderBy('name')->get();
 
         $cashiers = User::query()
             ->whereHas('role', fn ($q) => $q->where('name', 'cashier'))
@@ -164,23 +164,80 @@ class UserController extends Controller
             ]);
         }
 
-        $isAdmin = $user->role()->where('name', 'admin')->exists();
-
-        if ($isAdmin) {
-            $adminCount = User::query()
-                ->whereHas('role', fn ($q) => $q->where('name', 'admin'))
-                ->count();
-
-            if ($adminCount <= 1) {
-                return back()->withErrors([
-                    'user' => 'Cannot delete the last admin account.',
-                ]);
-            }
+        if ($user->isSoleActiveAdmin()) {
+            return back()->withErrors([
+                'user' => 'Cannot disable the last active admin account.',
+            ]);
         }
 
         $user->disable();
 
         return redirect()->route('admin.users.index')->with('success', 'User disabled.');
+    }
+
+    public function archive(User $user)
+    {
+        if (auth('admin')->id() === $user->id) {
+            return back()->withErrors([
+                'user' => 'You cannot archive your own account from this panel.',
+            ]);
+        }
+
+        if ($user->isSoleActiveAdmin()) {
+            return back()->withErrors([
+                'user' => 'Cannot archive the last active admin account.',
+            ]);
+        }
+
+        if (!$user->disabled_at) {
+            $user->disable();
+        }
+
+        $user->archive();
+
+        return redirect()->route('admin.users.index')->with('success', 'User archived.');
+    }
+
+    public function unarchive(User $user)
+    {
+        $user->unarchive();
+
+        return redirect()->route('admin.users.index')->with('success', 'User restored from archive.');
+    }
+
+    public function softDeleteNow(User $user)
+    {
+        if (auth('admin')->id() === $user->id) {
+            return back()->withErrors([
+                'user' => 'You cannot delete your own account from this panel.',
+            ]);
+        }
+
+        if ($user->isSoleActiveAdmin()) {
+            return back()->withErrors([
+                'user' => 'Cannot delete the last active admin account.',
+            ]);
+        }
+
+        if (!$user->disabled_at) {
+            $user->disable();
+        }
+
+        if (!$user->archived_at) {
+            $user->archive();
+        }
+
+        $user->delete();
+
+        return redirect()->route('admin.users.index')->with('success', 'User deleted.');
+    }
+
+    public function restoreDeleted(int $id)
+    {
+        $user = User::withTrashed()->findOrFail($id);
+        $user->restore();
+
+        return redirect()->route('admin.users.index')->with('success', 'User restored.');
     }
 
     private function sendAccountCreatedEmail(User $user): void

@@ -46,6 +46,7 @@ const navigationLinks = computed(() => {
             { label: 'Manage Users', href: route('admin.users.index') },
             { label: 'Service Categories', href: route('admin.service-categories.index') },
             { label: 'Reports', href: route('admin.reports.daily') },
+            { label: 'Monitoring', href: route('admin.monitoring.index') },
         ];
     }
 
