@@ -22,6 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Register custom middleware aliases for use in routes
         $middleware->alias([
             'role' => \App\Http\Middleware\RoleMiddleware::class,
+            'queue.token' => \App\Http\Middleware\EnsureQueueTrackingToken::class,
         ]);
 
         

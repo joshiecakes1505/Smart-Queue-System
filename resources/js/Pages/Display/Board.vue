@@ -51,8 +51,7 @@ const visibleReinstatedQueues = computed(() => (data.value.reinstated_queues || 
 
 const priorityLegend = [
   { label: 'Senior Citizen / High Priority', swatch: 'bg-blue-700' },
-  { label: 'Visitor / Parent', swatch: 'bg-orange-500' },
-  { label: 'Student / General', swatch: 'bg-[#800000]' },
+  { label: 'Student / Parent / Visitor', swatch: 'bg-[#800000]' },
 ]
 
 const getWindowAnnouncementKey = (windowData) => {
@@ -208,13 +207,7 @@ const queueTheme = (clientType) => {
     }
   }
 
-  if (clientType === 'visitor' || clientType === 'parent') {
-    return {
-      numberText: 'text-orange-600',
-      calledBg: 'bg-orange-500',
-    }
-  }
-
+  // student, parent, and visitor are all the same (non-priority) tier.
   return {
     numberText: 'text-[#800000]',
     calledBg: 'bg-[#800000]',

@@ -46,11 +46,10 @@ class CashierController extends Controller
                 ->get();
         }
 
-        $next = QueueModel::with('serviceCategory')
-            ->where('status', QueueModel::STATUS_WAITING)
-            ->orderBy('created_at', 'asc')
-            ->limit(5)
-            ->get();
+        // Mirrors the exact same priority/regular weighting the real
+        // callNext() uses, so this preview never diverges from what will
+        // actually get called (see QueueSchedulingService::previewUpcomingQueues()).
+        $next = collect($this->queueService->previewUpcoming(5));
 
         $skippedEligible = QueueModel::with('serviceCategory')
             ->where('status', QueueModel::STATUS_SKIPPED)

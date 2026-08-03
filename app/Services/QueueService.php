@@ -53,10 +53,12 @@ class QueueService
 
             $queueNumber = $this->nextAvailableQueueNumber($counter, $prefix);
 
-            $assignedWindowId = $serviceCategoryId
-                ? $this->scheduler->assignWindowForIncomingQueue((int) $serviceCategoryId, $counter)
-                : null;
-
+            // Tickets are NOT pre-tied to a cashier_window_id here. A ticket
+            // only gets a window once a cashier actually calls it (see
+            // callNext()) — otherwise whichever window happened to be
+            // pre-assigned at creation time would "own" it, letting a free
+            // cashier get skipped over in favor of one still busy, which is
+            // unfair to whoever is genuinely first in line.
             $queue = $this->repo->create([
                 'queue_number' => $queueNumber,
                 'tracking_token' => Str::uuid(),
@@ -66,7 +68,6 @@ class QueueService
                 'client_type' => $data['client_type'] ?? 'student',
                 'phone' => $data['phone'] ?? null,
                 'note' => $data['note'] ?? null,
-                'cashier_window_id' => $assignedWindowId,
             ]);
 
             // initial creation log is optional; queue_logs enum currently contains called/skipped/recalled/completed
@@ -263,6 +264,14 @@ class QueueService
     public function estimateWaitMinutes(Queue $queue): ?int
     {
         return $this->scheduler->estimateWaitMinutes($queue);
+    }
+
+    /**
+     * @return array<int, Queue>
+     */
+    public function previewUpcoming(int $limit = 5): array
+    {
+        return $this->scheduler->previewUpcomingQueues($limit);
     }
 
     private function resolveSchedulingCounter(?int $serviceCategoryId): QueueCounter

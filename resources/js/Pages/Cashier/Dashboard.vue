@@ -376,6 +376,34 @@ const handleShortcutKeydown = (event) => {
 };
 
 const MAX_REINSTATEMENTS = 2;
+const reinstatingQueueId = ref(null);
+
+const reinstateQueue = (queue) => {
+    if (!queue || reinstatingQueueId.value === queue.id) return;
+
+    reinstatingQueueId.value = queue.id;
+
+    window.axios.post(route('cashier.reinstate', queue.id))
+        .then((response) => {
+            if (response.data?.status === 'ok') {
+                setFeedback('success', 'Queue has been reinstated and returned to waiting.');
+                showSuccessToast('Reinstated', 'Queue has been reinstated and returned to waiting.');
+                refreshData();
+                return;
+            }
+
+            setFeedback('error', response.data?.message || 'Queue is not eligible for reinstatement.');
+            swal?.fire({ icon: 'error', title: 'Failed', text: response.data?.message || 'Queue is not eligible for reinstatement.' });
+        })
+        .catch((error) => {
+            const message = error?.response?.data?.message || 'An error occurred while reinstating the queue.';
+            setFeedback('error', message);
+            swal?.fire({ icon: 'error', title: 'Error', text: message });
+        })
+        .finally(() => {
+            reinstatingQueueId.value = null;
+        });
+};
 
 const getStatusColor = (status) => {
     switch(status) {
@@ -400,14 +428,7 @@ const queueTheme = (clientType) => {
         };
     }
 
-    if (clientType === 'visitor' || clientType === 'parent') {
-        return {
-            panel: 'bg-orange-500 text-white',
-            number: 'text-orange-600',
-            chip: 'bg-orange-100 text-orange-800',
-        };
-    }
-
+    // student, parent, and visitor are all the same (non-priority) tier.
     return {
         panel: 'bg-[#800000] text-white',
         number: 'text-[#800000]',
@@ -558,8 +579,8 @@ onBeforeUnmount(() => {
                     </div>
 
                     <div class="bg-white rounded-lg shadow-sm p-6">
-                        <h2 class="text-xl font-semibold text-[#800000] mb-1">Skipped Queues (Pending Auto-Reinstatement)</h2>
-                        <p class="text-sm text-gray-500 mb-4">These queues return to the waiting line automatically about 5 minutes after being skipped. No action needed.</p>
+                        <h2 class="text-xl font-semibold text-[#800000] mb-1">Skipped Queues (Reinstatement)</h2>
+                        <p class="text-sm text-gray-500 mb-4">These queues return to the waiting line automatically about 3 minutes after being skipped, or you can reinstate them right away below.</p>
 
                         <div class="overflow-x-auto">
                             <table class="w-full min-w-[420px] xl:min-w-0">
@@ -568,11 +589,12 @@ onBeforeUnmount(() => {
                                         <th class="text-left py-3 px-4 font-semibold text-gray-700">Queue Number</th>
                                         <th class="text-left py-3 px-4 font-semibold text-gray-700">Service Category</th>
                                         <th class="text-left py-3 px-4 font-semibold text-gray-700">Attempts</th>
+                                        <th class="text-left py-3 px-4 font-semibold text-gray-700">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr v-if="skippedEligible.length === 0">
-                                        <td colspan="3" class="text-center py-8 text-gray-500">
+                                        <td colspan="4" class="text-center py-8 text-gray-500">
                                             No skipped queues pending reinstatement
                                         </td>
                                     </tr>
@@ -584,6 +606,15 @@ onBeforeUnmount(() => {
                                         <td class="py-3 px-4 font-semibold" :class="queueTheme(queue.client_type).number">{{ queue.queue_number }}</td>
                                         <td class="py-3 px-4">{{ serviceCategoryLabel(queue) }}</td>
                                         <td class="py-3 px-4 text-gray-600">{{ queue.skip_count }} / {{ MAX_REINSTATEMENTS }}</td>
+                                        <td class="py-3 px-4">
+                                            <button
+                                                @click="reinstateQueue(queue)"
+                                                :disabled="reinstatingQueueId === queue.id"
+                                                class="border-2 border-[#FFC107] hover:bg-[#FFC107] text-[#800000] px-4 py-2 rounded-lg font-semibold transition disabled:opacity-50"
+                                            >
+                                                {{ reinstatingQueueId === queue.id ? 'Reinstating...' : 'Reinstate' }}
+                                            </button>
+                                        </td>
                                     </tr>
                                 </tbody>
                             </table>
