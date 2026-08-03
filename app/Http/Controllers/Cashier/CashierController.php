@@ -54,9 +54,9 @@ class CashierController extends Controller
 
         $skippedEligible = QueueModel::with('serviceCategory')
             ->where('status', QueueModel::STATUS_SKIPPED)
-            ->where('skip_count', 1)
+            ->where('skip_count', '<=', (int) config('ticketing.max_reinstatements', 2))
             ->where('is_reinstated', false)
-            ->orderBy('updated_at', 'desc')
+            ->orderBy('last_skipped_at', 'asc')
             ->limit(10)
             ->get();
 

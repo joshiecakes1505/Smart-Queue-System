@@ -451,8 +451,8 @@ onBeforeUnmount(() => {
             v-if="hasAnyReinstatableQueue"
             class="flex-1 min-h-0 flex flex-col bg-amber-50 border-2 border-amber-300 rounded-lg p-3 sm:p-4 overflow-hidden"
           >
-            <h3 class="shrink-0 text-base sm:text-lg font-bold text-amber-700 text-center">Skipped — Please Return</h3>
-            <p class="shrink-0 text-xs text-amber-700/80 text-center mb-2">Please wait for a cashier to reinstate you.</p>
+            <h3 class="shrink-0 text-base sm:text-lg font-bold text-amber-700 text-center">Skipped — Returning Automatically</h3>
+            <p class="shrink-0 text-xs text-amber-700/80 text-center mb-2">You will automatically rejoin the queue within a few minutes.</p>
 
             <div class="flex-1 min-h-0 overflow-hidden">
               <ul class="h-full flex flex-col gap-1.5 sm:gap-2">

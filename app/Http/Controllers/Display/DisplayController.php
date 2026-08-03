@@ -58,10 +58,10 @@ class DisplayController extends Controller
                 ];
             });
 
-        // Same "eligible for reinstatement" set as the Cashier dashboard:
-        // skipped once, not yet reinstated by a cashier.
+        // Same "pending auto-reinstatement" set as the Cashier dashboard:
+        // skipped and still within the automatic reinstatement attempt limit.
         $reinstatedQueues = Queue::where('status', Queue::STATUS_SKIPPED)
-            ->where('skip_count', 1)
+            ->where('skip_count', '<=', (int) config('ticketing.max_reinstatements', 2))
             ->where('is_reinstated', false)
             ->with('serviceCategory')
             ->orderBy('updated_at', 'asc')

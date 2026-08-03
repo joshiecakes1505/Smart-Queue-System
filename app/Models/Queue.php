@@ -14,6 +14,7 @@ class Queue extends Model
     public const STATUS_CALLED = 'called';
     public const STATUS_SKIPPED = 'skipped';
     public const STATUS_COMPLETED = 'completed';
+    public const STATUS_EXPIRED = 'expired';
 
     public const CLIENT_TYPE_STUDENT = 'student';
     public const CLIENT_TYPE_PARENT = 'parent';
@@ -33,6 +34,7 @@ class Queue extends Model
         'status',
         'skip_count',
         'is_reinstated',
+        'last_skipped_at',
         'cashier_window_id',
         'start_time',
         'end_time',
@@ -45,6 +47,7 @@ class Queue extends Model
     protected $casts = [
         'skip_count' => 'integer',
         'is_reinstated' => 'boolean',
+        'last_skipped_at' => 'datetime',
         'start_time' => 'datetime',
         'end_time' => 'datetime',
     ];

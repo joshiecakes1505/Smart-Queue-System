@@ -375,44 +375,14 @@ const handleShortcutKeydown = (event) => {
     requestCompleteConfirmation();
 };
 
-const reinstate = (queue) => {
-    if (!queue) return;
-
-    if (queue.skip_count >= 2 || queue.is_reinstated) {
-        setFeedback('warning', 'Queue is no longer eligible for reinstatement.');
-        swal?.fire({ icon: 'warning', title: 'Not eligible', text: 'Queue is no longer eligible for reinstatement.' });
-        return;
-    }
-
-    processing.value = true;
-
-    window.axios.post(route('cashier.reinstate', queue.id))
-        .then((response) => {
-            if (response.data?.status === 'ok') {
-                setFeedback('success', 'Queue has been reinstated and returned to waiting.');
-                showSuccessToast('Reinstated', 'Queue has been reinstated and returned to waiting.');
-                refreshData();
-                return;
-            }
-
-            setFeedback('error', response.data?.message || 'Queue is not eligible for reinstatement.');
-            swal?.fire({ icon: 'error', title: 'Failed', text: response.data?.message || 'Queue is not eligible for reinstatement.' });
-        })
-        .catch((error) => {
-            const message = error?.response?.data?.message || 'An error occurred while reinstating the queue.';
-            setFeedback('error', message);
-            swal?.fire({ icon: 'error', title: 'Error', text: message });
-        })
-        .finally(() => {
-            processing.value = false;
-        });
-};
+const MAX_REINSTATEMENTS = 2;
 
 const getStatusColor = (status) => {
     switch(status) {
         case 'completed': return 'bg-green-100 text-green-800';
         case 'skipped': return 'bg-gray-100 text-gray-800';
         case 'called': return 'bg-blue-100 text-blue-800';
+        case 'expired': return 'bg-red-100 text-red-800';
         default: return 'bg-yellow-100 text-yellow-800';
     }
 };
@@ -588,7 +558,8 @@ onBeforeUnmount(() => {
                     </div>
 
                     <div class="bg-white rounded-lg shadow-sm p-6">
-                        <h2 class="text-xl font-semibold text-[#800000] mb-4">Skipped Queues (Eligible for Reinstatement)</h2>
+                        <h2 class="text-xl font-semibold text-[#800000] mb-1">Skipped Queues (Pending Auto-Reinstatement)</h2>
+                        <p class="text-sm text-gray-500 mb-4">These queues return to the waiting line automatically about 5 minutes after being skipped. No action needed.</p>
 
                         <div class="overflow-x-auto">
                             <table class="w-full min-w-[420px] xl:min-w-0">
@@ -596,13 +567,13 @@ onBeforeUnmount(() => {
                                     <tr class="border-b border-gray-200">
                                         <th class="text-left py-3 px-4 font-semibold text-gray-700">Queue Number</th>
                                         <th class="text-left py-3 px-4 font-semibold text-gray-700">Service Category</th>
-                                        <th class="text-left py-3 px-4 font-semibold text-gray-700">Action</th>
+                                        <th class="text-left py-3 px-4 font-semibold text-gray-700">Attempts</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr v-if="skippedEligible.length === 0">
                                         <td colspan="3" class="text-center py-8 text-gray-500">
-                                            No eligible skipped queues
+                                            No skipped queues pending reinstatement
                                         </td>
                                     </tr>
                                     <tr
@@ -612,15 +583,7 @@ onBeforeUnmount(() => {
                                     >
                                         <td class="py-3 px-4 font-semibold" :class="queueTheme(queue.client_type).number">{{ queue.queue_number }}</td>
                                         <td class="py-3 px-4">{{ serviceCategoryLabel(queue) }}</td>
-                                        <td class="py-3 px-4">
-                                            <button
-                                                @click="reinstate(queue)"
-                                                :disabled="processing || queue.skip_count >= 2 || queue.is_reinstated"
-                                                class="border-2 border-[#FFC107] hover:bg-[#FFC107] text-[#800000] px-4 py-2 rounded-lg font-semibold transition disabled:opacity-50"
-                                            >
-                                                Reinstate
-                                            </button>
-                                        </td>
+                                        <td class="py-3 px-4 text-gray-600">{{ queue.skip_count }} / {{ MAX_REINSTATEMENTS }}</td>
                                     </tr>
                                 </tbody>
                             </table>

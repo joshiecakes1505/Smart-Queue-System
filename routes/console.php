@@ -129,6 +129,8 @@ Artisan::command('deploy:check-assets', function () {
     return 0;
 })->purpose('Validate Vite manifest and deployed build assets');
 
+Schedule::command('queues:auto-reinstate')->everyMinute()->withoutOverlapping();
+
 Schedule::command('backup:run --only-db')->dailyAt('01:00')->withoutOverlapping();
 Schedule::command('backup:run --only-files')->dailyAt('01:10')->withoutOverlapping();
 Schedule::command('backup:clean')->dailyAt('01:30')->withoutOverlapping();

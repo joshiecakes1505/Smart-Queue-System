@@ -142,6 +142,7 @@ class QueueService
         $queue->status = Queue::STATUS_SKIPPED;
         $queue->cashier_window_id = null;
         $queue->end_time = Carbon::now();
+        $queue->last_skipped_at = Carbon::now();
         $queue->save();
 
         QueueLog::create([
@@ -196,29 +197,63 @@ class QueueService
         return $queue;
     }
 
-    public function reinstate(int $queueId, ?int $performedBy = null): ?Queue
+    public function reinstate(int $queueId, ?int $performedBy = null, bool $auto = false): ?Queue
     {
         $queue = $this->repo->getById($queueId);
         if (!$queue) return null;
 
+        $maxReinstatements = (int) config('ticketing.max_reinstatements', 2);
+
         if (
             $queue->status !== Queue::STATUS_SKIPPED ||
-            (int) $queue->skip_count !== 1 ||
-            (bool) $queue->is_reinstated
+            (bool) $queue->is_reinstated ||
+            (int) $queue->skip_count > $maxReinstatements
         ) {
             return null;
         }
 
         $queue->status = Queue::STATUS_WAITING;
-        $queue->is_reinstated = true;
         $queue->cashier_window_id = null;
         $queue->start_time = null;
         $queue->end_time = null;
+        $queue->last_skipped_at = null;
+        // Reinstated tickets rejoin at the back of the active waiting line.
+        $queue->created_at = Carbon::now();
         $queue->save();
 
         QueueLog::create([
             'queue_id' => $queue->id,
             'action' => 'reinstated',
+            'performed_by' => $performedBy,
+            'meta' => ['auto' => $auto],
+        ]);
+
+        return $queue;
+    }
+
+    /**
+     * Mark a skipped queue as expired once it has exhausted its reinstatement attempts.
+     */
+    public function expire(int $queueId, ?int $performedBy = null): ?Queue
+    {
+        $queue = $this->repo->getById($queueId);
+        if (!$queue) return null;
+
+        $maxReinstatements = (int) config('ticketing.max_reinstatements', 2);
+
+        if (
+            $queue->status !== Queue::STATUS_SKIPPED ||
+            (int) $queue->skip_count <= $maxReinstatements
+        ) {
+            return null;
+        }
+
+        $queue->status = Queue::STATUS_EXPIRED;
+        $queue->save();
+
+        QueueLog::create([
+            'queue_id' => $queue->id,
+            'action' => 'expired',
             'performed_by' => $performedBy,
         ]);
 

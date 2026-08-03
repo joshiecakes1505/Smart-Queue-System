@@ -133,6 +133,9 @@ class PublicQueueController extends Controller
             }
         }
 
+        $maxAttempts = (int) config('ticketing.max_reinstatements', 2);
+        $skipCount = (int) $queue->skip_count;
+
         return response()->json([
             'queue_number' => $queue->queue_number,
             'status' => $queue->status,
@@ -151,6 +154,9 @@ class PublicQueueController extends Controller
             'created_at' => $queue->created_at?->toIso8601String(),
             'start_time' => $queue->start_time?->toIso8601String(),
             'cashier_window' => $queue->cashierWindow?->name,
+            'skip_count' => $skipCount,
+            'max_attempts' => $maxAttempts,
+            'remaining_attempts' => max($maxAttempts - $skipCount, 0),
         ]);
     }
 

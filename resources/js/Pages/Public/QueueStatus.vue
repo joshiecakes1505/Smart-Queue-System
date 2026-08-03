@@ -49,8 +49,13 @@ const statusText = computed(() => {
     case 'completed':
       return 'Service completed'
     case 'skipped':
-      return 'Skipped (please see frontdesk)'
+      return `Skipped — you will automatically return to the queue in about 5 minutes (attempt ${queueData.value.skip_count || 1} of ${queueData.value.max_attempts || 2}).`
+    case 'expired':
+      return 'This queue has expired after reaching the maximum number of automatic reinstatements. Please proceed to the frontdesk for assistance.'
     case 'waiting':
+      if (queueData.value.skip_count > 0) {
+        return `Automatically reinstated — please stay near the cashier area. #${queueData.value.position || '-'} in line`
+      }
       return `Waiting • #${queueData.value.position || '-'} in line`
     default:
       return `Status: ${queueData.value.status}`
@@ -66,7 +71,9 @@ const statusClass = computed(() => {
     case 'completed':
       return 'bg-green-50 text-green-700 border-green-200'
     case 'skipped':
-      return 'bg-gray-100 text-gray-700 border-gray-200'
+      return 'bg-amber-50 text-amber-700 border-amber-200'
+    case 'expired':
+      return 'bg-red-50 text-red-700 border-red-200'
     default:
       return 'bg-[#fdf2f2] text-[#800000] border-[#f7cccc]'
   }
@@ -285,6 +292,13 @@ usePolling(fetchAll, 2000)
             <div class="bg-gray-50 rounded-lg px-3 py-2 col-span-2">
               <p class="text-gray-500 text-xs">Service Category</p>
               <p class="font-semibold text-gray-800">{{ serviceCategoryLabel(queueData) }}</p>
+            </div>
+            <div v-if="queueData?.skip_count > 0" class="bg-gray-50 rounded-lg px-3 py-2 col-span-2">
+              <p class="text-gray-500 text-xs">Attempts Used</p>
+              <p class="font-semibold text-[#800000]">
+                {{ queueData.skip_count }} / {{ queueData.max_attempts }}
+                <span class="text-xs text-gray-500 font-normal">({{ queueData.remaining_attempts }} remaining)</span>
+              </p>
             </div>
           </div>
         </div>
