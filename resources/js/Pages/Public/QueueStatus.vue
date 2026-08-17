@@ -131,7 +131,14 @@ const queueTheme = (clientType) => {
     }
   }
 
-  // student, parent, and visitor are all the same (non-priority) tier.
+  if (clientType === 'parent' || clientType === 'visitor') {
+    return {
+      numberText: 'text-orange-600',
+      calledBg: 'bg-orange-600',
+    }
+  }
+
+  // student keeps its own (non-priority) tier.
   return {
     numberText: 'text-[#800000]',
     calledBg: 'bg-[#800000]',

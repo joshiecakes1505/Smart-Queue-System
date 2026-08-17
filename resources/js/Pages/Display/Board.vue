@@ -15,8 +15,6 @@ const isFullscreen = ref(false)
 const hasAnnouncementBaseline = ref(false)
 const lastAnnouncedByWindow = ref({})
 const currentClock = ref(new Date())
-const DISPLAY_CHANNEL_NAME = 'display.queues'
-let displayChannel = null
 let clockInterval = null
 const ANNOUNCEMENT_STORAGE_KEY = 'display-board:last-announced'
 const schoolLogoUrl = document.querySelector('meta[name="app-logo-url"]')?.getAttribute('content')
@@ -51,7 +49,8 @@ const visibleReinstatedQueues = computed(() => (data.value.reinstated_queues || 
 
 const priorityLegend = [
   { label: 'Senior Citizen / High Priority', swatch: 'bg-blue-700' },
-  { label: 'Student / Parent / Visitor', swatch: 'bg-[#800000]' },
+  { label: 'Student', swatch: 'bg-[#800000]' },
+  { label: 'Parent / Visitor', swatch: 'bg-orange-600' },
 ]
 
 const getWindowAnnouncementKey = (windowData) => {
@@ -145,23 +144,6 @@ const fetchData = async () => {
 
 usePolling(fetchData, refreshIntervalMs)
 
-const connectDisplayRealtime = () => {
-  if (!window.Echo) return
-
-  displayChannel = window.Echo.channel(DISPLAY_CHANNEL_NAME)
-
-  displayChannel.listen('.queues.updated', () => {
-    fetchData()
-  })
-}
-
-const disconnectDisplayRealtime = () => {
-  if (!window.Echo || !displayChannel) return
-
-  window.Echo.leaveChannel(DISPLAY_CHANNEL_NAME)
-  displayChannel = null
-}
-
 const formatTime = (timestamp) => {
   return formatManilaTime(timestamp, {
     second: '2-digit',
@@ -207,7 +189,14 @@ const queueTheme = (clientType) => {
     }
   }
 
-  // student, parent, and visitor are all the same (non-priority) tier.
+  if (clientType === 'parent' || clientType === 'visitor') {
+    return {
+      numberText: 'text-orange-600',
+      calledBg: 'bg-orange-600',
+    }
+  }
+
+  // student keeps its own (non-priority) tier.
   return {
     numberText: 'text-[#800000]',
     calledBg: 'bg-[#800000]',
@@ -263,13 +252,11 @@ onMounted(() => {
   syncFullscreenState()
   document.addEventListener('fullscreenchange', syncFullscreenState)
   startClock()
-  connectDisplayRealtime()
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener('fullscreenchange', syncFullscreenState)
   stopClock()
-  disconnectDisplayRealtime()
 })
 </script>
 
@@ -381,8 +368,8 @@ onBeforeUnmount(() => {
 
                 <!-- Queue Details -->
                 <div class="shrink-0 text-center text-gray-700 space-y-0.5">
-                  <p class="text-sm sm:text-base font-semibold" :class="isWindowClosed(window) ? 'text-gray-500' : 'text-gray-700'">{{ windowPrimaryStatus(window) }}</p>
-                  <p class="text-xs sm:text-sm text-gray-500">{{ windowSecondaryStatus(window) }}</p>
+                  <p class="text-base sm:text-lg font-semibold" :class="isWindowClosed(window) ? 'text-gray-500' : 'text-gray-700'">{{ windowPrimaryStatus(window) }}</p>
+                  <p class="text-sm sm:text-base text-gray-500">{{ windowSecondaryStatus(window) }}</p>
                 </div>
               </div>
             </div>
@@ -410,8 +397,8 @@ onBeforeUnmount(() => {
                 {{ upNextQueue.queue_number }}
               </p>
               <div class="text-left min-w-0">
-                <p class="text-sm sm:text-base font-semibold text-gray-700 truncate">{{ serviceCategoryLabel(upNextQueue) }}</p>
-                <p class="text-xs sm:text-sm text-gray-500 truncate">{{ clientTypeLabel(upNextQueue.client_type) }}</p>
+                <p class="text-base sm:text-lg font-semibold text-gray-700 truncate">{{ serviceCategoryLabel(upNextQueue) }}</p>
+                <p class="text-sm sm:text-base text-gray-500 truncate">{{ clientTypeLabel(upNextQueue.client_type) }}</p>
               </div>
             </div>
           </div>
@@ -429,7 +416,7 @@ onBeforeUnmount(() => {
                 >
                   <span class="text-xs text-gray-400 shrink-0">#{{ idx + 2 }}</span>
                   <span class="text-lg sm:text-xl font-bold shrink-0" :class="queueTheme(queue.client_type).numberText">{{ queue.queue_number }}</span>
-                  <span class="text-xs sm:text-sm text-gray-600 truncate min-w-0">{{ serviceCategoryLabel(queue) }} · {{ clientTypeLabel(queue.client_type) }}</span>
+                  <span class="text-sm sm:text-base text-gray-600 truncate min-w-0">{{ serviceCategoryLabel(queue) }} · {{ clientTypeLabel(queue.client_type) }}</span>
                 </li>
               </ul>
             </div>
@@ -455,7 +442,7 @@ onBeforeUnmount(() => {
                   class="flex-1 min-h-0 flex items-center gap-3 bg-white border border-amber-300 rounded-md px-3 py-1.5"
                 >
                   <span class="text-lg sm:text-xl font-bold text-amber-600 shrink-0">{{ queue.queue_number }}</span>
-                  <span class="text-xs sm:text-sm text-gray-600 truncate min-w-0">{{ serviceCategoryLabel(queue) }} · {{ clientTypeLabel(queue.client_type) }}</span>
+                  <span class="text-sm sm:text-base text-gray-600 truncate min-w-0">{{ serviceCategoryLabel(queue) }} · {{ clientTypeLabel(queue.client_type) }}</span>
                 </li>
               </ul>
             </div>

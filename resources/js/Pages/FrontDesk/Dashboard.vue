@@ -62,11 +62,13 @@ const formatTime = (datetime) => {
 
 const queueNumberClass = (clientType) => {
     if (clientType === 'senior_citizen' || clientType === 'high_priority') return 'text-blue-700';
+    if (clientType === 'parent' || clientType === 'visitor') return 'text-orange-600';
     return 'text-[#800000]';
 };
 
 const queueChipClass = (clientType) => {
     if (clientType === 'senior_citizen' || clientType === 'high_priority') return 'bg-blue-100 text-blue-800';
+    if (clientType === 'parent' || clientType === 'visitor') return 'bg-orange-100 text-orange-800';
     return 'bg-[#fdf2f2] text-[#800000]';
 };
 

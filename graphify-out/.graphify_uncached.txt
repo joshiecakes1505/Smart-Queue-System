@@ -1,0 +1,5 @@
+C:\projects\smart-queue-system\README.md
+C:\projects\smart-queue-system\print-service\README.md
+C:\projects\smart-queue-system\public\robots.txt
+C:\projects\smart-queue-system\public\images\eye.png
+C:\projects\smart-queue-system\public\images\school-logo.png
