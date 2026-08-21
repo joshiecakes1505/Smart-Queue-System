@@ -10,7 +10,7 @@ import {
 } from '@/Services/QueueAnnouncement'
 
 const data = ref({ windows: [], next_queues: [], reinstated_queues: [], timestamp: null })
-const refreshIntervalMs = 5000
+const refreshIntervalMs = 2000
 const isFullscreen = ref(false)
 const hasAnnouncementBaseline = ref(false)
 const lastAnnouncedByWindow = ref({})
@@ -41,7 +41,23 @@ const isSystemIdle = computed(() => {
 // Display-only split of the existing next_queues list: the immediate next
 // queue gets its own highlighted container, the rest stay in the list below.
 const upNextQueue = computed(() => data.value.next_queues[0] || null)
-const upcomingQueues = computed(() => data.value.next_queues.slice(1, 6))
+const upcomingQueues = computed(() => data.value.next_queues.slice(1, 16))
+
+// More waiting queues than fit legibly in one column -> add columns and
+// shrink the number a step so the grid still fits the fixed side-panel height.
+const nextQueueGridClass = computed(() => {
+  const count = upcomingQueues.value.length
+  if (count <= 5) return 'grid-cols-1'
+  if (count <= 10) return 'grid-cols-2'
+  return 'grid-cols-3'
+})
+
+const nextQueueNumberSizeClass = computed(() => {
+  const count = upcomingQueues.value.length
+  if (count <= 5) return 'text-3xl sm:text-4xl'
+  if (count <= 10) return 'text-2xl sm:text-3xl'
+  return 'text-xl sm:text-2xl'
+})
 
 // TV layout has a fixed side-panel height, so cap how many reinstated rows
 // render at once (backend already caps the raw list at 10).
@@ -323,13 +339,13 @@ onBeforeUnmount(() => {
             <h2 class="text-xl sm:text-2xl lg:text-3xl font-bold text-[#800000]">Now Serving</h2>
 
             <!-- Color Legend -->
-            <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs sm:text-sm text-gray-600">
+            <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm sm:text-base font-bold text-gray-700">
               <span
                 v-for="item in priorityLegend"
                 :key="item.label"
                 class="flex items-center gap-2"
               >
-                <span class="inline-block h-3 w-3 rounded-full" :class="item.swatch"></span>
+                <span class="inline-block h-3.5 w-3.5 rounded-full" :class="item.swatch"></span>
                 {{ item.label }}
               </span>
             </div>
@@ -352,7 +368,7 @@ onBeforeUnmount(() => {
 
                 <!-- Current Queue -->
                 <div class="text-center mb-2">
-                  <p class="text-xs text-gray-600 mb-1">NOW SERVING</p>
+                  <p class="text-sm sm:text-base font-bold text-gray-600 mb-1">NOW SERVING</p>
                   <div
                     class="rounded-lg py-3 sm:py-4 lg:py-5"
                     :class="window.current ? queueTheme(window.current?.client_type).calledBg : 'bg-[#FFC107]'"
@@ -367,9 +383,9 @@ onBeforeUnmount(() => {
                 </div>
 
                 <!-- Queue Details -->
-                <div class="shrink-0 text-center text-gray-700 space-y-0.5">
-                  <p class="text-base sm:text-lg font-semibold" :class="isWindowClosed(window) ? 'text-gray-500' : 'text-gray-700'">{{ windowPrimaryStatus(window) }}</p>
-                  <p class="text-sm sm:text-base text-gray-500">{{ windowSecondaryStatus(window) }}</p>
+                <div class="shrink-0 text-center text-gray-700 space-y-1">
+                  <p class="text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight" :class="isWindowClosed(window) ? 'text-gray-500' : 'text-gray-700'">{{ windowPrimaryStatus(window) }}</p>
+                  <p class="text-lg sm:text-xl lg:text-2xl text-gray-500 leading-tight">{{ windowSecondaryStatus(window) }}</p>
                 </div>
               </div>
             </div>
@@ -388,17 +404,17 @@ onBeforeUnmount(() => {
             v-if="upNextQueue"
             class="shrink-0 bg-white border-4 border-[#FFC107] rounded-lg p-3 sm:p-4 shadow-md"
           >
-            <p class="text-xs font-semibold text-gray-600 text-center mb-2 tracking-wide uppercase">Up Next</p>
-            <div class="flex items-center justify-center gap-3">
+            <p class="text-sm sm:text-base font-bold text-gray-600 text-center mb-2 tracking-wide uppercase">Up Next</p>
+            <div class="flex flex-col items-center justify-center text-center gap-1">
               <p
                 class="text-4xl sm:text-5xl font-bold leading-none"
                 :class="queueTheme(upNextQueue.client_type).numberText"
               >
                 {{ upNextQueue.queue_number }}
               </p>
-              <div class="text-left min-w-0">
-                <p class="text-base sm:text-lg font-semibold text-gray-700 truncate">{{ serviceCategoryLabel(upNextQueue) }}</p>
-                <p class="text-sm sm:text-base text-gray-500 truncate">{{ clientTypeLabel(upNextQueue.client_type) }}</p>
+              <div class="min-w-0 w-full">
+                <p class="text-2xl sm:text-3xl font-bold text-gray-700 truncate">{{ serviceCategoryLabel(upNextQueue) }}</p>
+                <p class="text-lg sm:text-xl text-gray-500 truncate">{{ clientTypeLabel(upNextQueue.client_type) }}</p>
               </div>
             </div>
           </div>
@@ -408,17 +424,21 @@ onBeforeUnmount(() => {
             <h3 class="shrink-0 text-base sm:text-lg font-bold text-[#800000] mb-2 text-center">Next in Queue</h3>
 
             <div v-if="upcomingQueues.length > 0" class="flex-1 min-h-0 overflow-hidden">
-              <ul class="h-full flex flex-col gap-1.5 sm:gap-2">
-                <li
+              <div class="h-full grid auto-rows-fr gap-1.5 sm:gap-2" :class="nextQueueGridClass">
+                <div
                   v-for="(queue, idx) in upcomingQueues"
                   :key="queue.queue_number"
-                  class="flex-1 min-h-0 flex items-center gap-3 bg-white border border-[#e8d0d0] rounded-md px-3 py-1.5"
+                  class="min-h-0 flex items-center gap-2 bg-white border border-[#e8d0d0] rounded-md px-2 sm:px-3 py-1.5"
                 >
-                  <span class="text-xs text-gray-400 shrink-0">#{{ idx + 2 }}</span>
-                  <span class="text-lg sm:text-xl font-bold shrink-0" :class="queueTheme(queue.client_type).numberText">{{ queue.queue_number }}</span>
-                  <span class="text-sm sm:text-base text-gray-600 truncate min-w-0">{{ serviceCategoryLabel(queue) }} · {{ clientTypeLabel(queue.client_type) }}</span>
-                </li>
-              </ul>
+                  <span class="text-xs sm:text-sm text-gray-400 shrink-0 w-5 sm:w-6 text-center">#{{ idx + 2 }}</span>
+                  <span
+                    class="flex-1 text-center font-bold leading-none"
+                    :class="[nextQueueNumberSizeClass, queueTheme(queue.client_type).numberText]"
+                  >
+                    {{ queue.queue_number }}
+                  </span>
+                </div>
+              </div>
             </div>
 
             <div v-else class="flex-1 min-h-0 flex items-center justify-center">
@@ -442,7 +462,7 @@ onBeforeUnmount(() => {
                   class="flex-1 min-h-0 flex items-center gap-3 bg-white border border-amber-300 rounded-md px-3 py-1.5"
                 >
                   <span class="text-lg sm:text-xl font-bold text-amber-600 shrink-0">{{ queue.queue_number }}</span>
-                  <span class="text-sm sm:text-base text-gray-600 truncate min-w-0">{{ serviceCategoryLabel(queue) }} · {{ clientTypeLabel(queue.client_type) }}</span>
+                  <span class="text-base sm:text-lg text-gray-600 truncate min-w-0">{{ serviceCategoryLabel(queue) }} · {{ clientTypeLabel(queue.client_type) }}</span>
                 </li>
               </ul>
             </div>
@@ -454,7 +474,7 @@ onBeforeUnmount(() => {
     <!-- Footer -->
     <footer v-if="!isSystemIdle" class="shrink-0 bg-gray-100 py-1.5">
       <div class="container mx-auto px-4 sm:px-8 text-center">
-        <p class="text-xs text-gray-600">Auto-refresh fallback every 5 seconds</p>
+        <p class="text-xs text-gray-600">Auto-refresh fallback every 2 seconds</p>
       </div>
     </footer>
   </div>

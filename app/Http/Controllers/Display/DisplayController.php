@@ -6,13 +6,17 @@ use App\Http\Controllers\Controller;
 use App\Models\CashierWindow;
 use App\Models\Queue;
 use App\Services\QueueSchedulingService;
+use App\Services\QueueService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 
 class DisplayController extends Controller
 {
-    public function __construct(private readonly QueueSchedulingService $scheduler)
-    {
+    public function __construct(
+        private readonly QueueSchedulingService $scheduler,
+        private readonly QueueService $queueService,
+    ) {
     }
 
     public function index()
@@ -22,6 +26,14 @@ class DisplayController extends Controller
 
     public function data()
     {
+        // No cron/`schedule:work` process runs in production (single
+        // `php artisan serve` container), so the auto-reinstate sweep piggybacks
+        // on the display board's polling instead. Throttled so the busiest
+        // poller (2s refresh) doesn't run the sweep query on every request.
+        if (Cache::add('queue:auto-reinstate:lock', true, 15)) {
+            $this->queueService->autoReinstateSweep();
+        }
+
         $windows = CashierWindow::with(['assignedUser'])
             ->where('active', true)
             ->get()
@@ -47,7 +59,7 @@ class DisplayController extends Controller
                 ];
             });
 
-        $nextQueues = collect($this->scheduler->previewUpcomingQueues(5))
+        $nextQueues = collect($this->scheduler->previewUpcomingQueues(16))
             ->map(function ($q) {
                 return [
                     'queue_number' => $q->queue_number,

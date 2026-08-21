@@ -233,6 +233,47 @@ class QueueService
     }
 
     /**
+     * Reinstate/expire every skipped queue that's due, in one pass.
+     *
+     * Called opportunistically from request traffic (see DisplayController)
+     * instead of a scheduled command, since production runs a single
+     * `php artisan serve` process with no cron/`schedule:work` to drive it.
+     *
+     * @return array{reinstated: int, expired: int}
+     */
+    public function autoReinstateSweep(): array
+    {
+        $delayMinutes = (int) config('ticketing.reinstatement_delay_minutes', 5);
+        $maxReinstatements = (int) config('ticketing.max_reinstatements', 2);
+        $cutoff = now()->subMinutes($delayMinutes);
+
+        $candidates = Queue::query()
+            ->where('status', Queue::STATUS_SKIPPED)
+            ->where('is_reinstated', false)
+            ->whereNotNull('last_skipped_at')
+            ->where('last_skipped_at', '<=', $cutoff)
+            ->get();
+
+        $reinstated = 0;
+        $expired = 0;
+
+        foreach ($candidates as $queue) {
+            if ((int) $queue->skip_count > $maxReinstatements) {
+                if ($this->expire($queue->id)) {
+                    $expired++;
+                }
+                continue;
+            }
+
+            if ($this->reinstate($queue->id, null, auto: true)) {
+                $reinstated++;
+            }
+        }
+
+        return ['reinstated' => $reinstated, 'expired' => $expired];
+    }
+
+    /**
      * Mark a skipped queue as expired once it has exhausted its reinstatement attempts.
      */
     public function expire(int $queueId, ?int $performedBy = null): ?Queue

@@ -129,7 +129,19 @@ Artisan::command('deploy:check-assets', function () {
     return 0;
 })->purpose('Validate Vite manifest and deployed build assets');
 
-Schedule::command('queues:auto-reinstate')->everyMinute()->withoutOverlapping();
+// NOTE: nothing currently drives Laravel's scheduler in production. The
+// Windows Task Scheduler entry that ran `artisan schedule:run` every minute
+// (SmartQueue-LaravelScheduler) was removed because it popped a visible
+// cmd.exe window every minute on the host. None of the Schedule::command
+// entries below fire unless that (or `schedule:work`) is reinstated some
+// other way — e.g. a hidden/silent scheduled task, or `schedule:work` kept
+// running as a background service.
+//
+// queues:auto-reinstate relies on this file: the sweep instead runs
+// opportunistically from DisplayController@data on every display-board poll
+// (see QueueService::autoReinstateSweep). accounts:sweep-lifecycle and the
+// backup:* jobs below still assume a scheduler process and will NOT run
+// until one exists again.
 Schedule::command('accounts:sweep-lifecycle')->dailyAt('02:00')->withoutOverlapping();
 
 Schedule::command('backup:run --only-db')->dailyAt('01:00')->withoutOverlapping();
