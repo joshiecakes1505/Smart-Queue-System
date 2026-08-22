@@ -32,6 +32,8 @@ Route::middleware('auth:admin,frontdesk,cashier,web')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::put('/password', [PasswordController::class, 'update'])->name('password.update');
+    Route::patch('/profile/two-factor/enable', [ProfileController::class, 'enableTwoFactor'])->name('profile.two-factor.enable');
+    Route::patch('/profile/two-factor/disable', [ProfileController::class, 'disableTwoFactor'])->name('profile.two-factor.disable');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
@@ -44,6 +46,8 @@ Route::middleware(['auth:admin', 'role:admin'])->prefix('admin')->name('admin.')
     Route::post('cashier-windows/{cashierWindow}/assign', [AdminUserController::class, 'assignCashier'])->name('cashier-windows.assign');
     Route::post('users/{user}/reset-password', [AdminUserController::class, 'resetPassword'])->name('users.reset-password');
     Route::patch('users/{user}/enable', [AdminUserController::class, 'enable'])->name('users.enable');
+    Route::patch('users/{user}/two-factor/enable', [AdminUserController::class, 'enableTwoFactor'])->name('users.two-factor.enable');
+    Route::patch('users/{user}/two-factor/disable', [AdminUserController::class, 'disableTwoFactor'])->name('users.two-factor.disable');
     Route::patch('users/{user}/archive', [AdminUserController::class, 'archive'])->name('users.archive');
     Route::patch('users/{user}/unarchive', [AdminUserController::class, 'unarchive'])->name('users.unarchive');
     Route::delete('users/{user}/delete-now', [AdminUserController::class, 'softDeleteNow'])->name('users.delete-now');

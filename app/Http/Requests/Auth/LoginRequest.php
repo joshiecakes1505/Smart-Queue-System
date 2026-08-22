@@ -30,7 +30,6 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'role' => ['required', 'string', 'in:admin,frontdesk,cashier'],
             'email' => ['required', 'string', 'email'],
             'password' => ['required', 'string'],
         ];
@@ -45,17 +44,18 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        $guard = $this->guardFromRole();
+        $email = $this->string('email')->toString();
+
+        $lookupUser = User::query()
+            ->where('email', '=', $email)
+            ->with('role')
+            ->first();
+
+        $guard = $this->guardFromRoleName($lookupUser?->role?->name);
         $credentials = $this->only('email', 'password');
 
         if (! Auth::guard($guard)->attempt($credentials, $this->boolean('remember'))) {
-            $disabledUser = User::query()
-                ->where('email', '=', $this->string('email')->toString())
-                ->whereHas('role', fn ($q) => $q->where('name', '=', $this->string('role')->toString()))
-                ->whereNotNull('disabled_at')
-                ->first();
-
-            if ($disabledUser) {
+            if ($lookupUser && $lookupUser->disabled_at !== null) {
                 RateLimiter::hit($this->throttleKey());
 
                 throw ValidationException::withMessages([
@@ -71,15 +71,6 @@ class LoginRequest extends FormRequest
         }
 
         $user = Auth::guard($guard)->user()?->loadMissing('role');
-
-        if (! $user || $user->role?->name !== $this->string('role')->toString()) {
-            Auth::guard($guard)->logout();
-            RateLimiter::hit($this->throttleKey());
-
-            throw ValidationException::withMessages([
-                'role' => 'Selected role does not match this account.',
-            ]);
-        }
 
         if ($user->disabled_at !== null) {
             Auth::guard($guard)->logout();
@@ -124,7 +115,7 @@ class LoginRequest extends FormRequest
      */
     public function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->string('email')).'|'.$this->string('role').'|'.$this->ip());
+        return Str::transliterate(Str::lower($this->string('email')).'|'.$this->ip());
     }
 
     public function authenticatedGuard(): string
@@ -132,10 +123,8 @@ class LoginRequest extends FormRequest
         return $this->authenticatedGuard;
     }
 
-    private function guardFromRole(): string
+    private function guardFromRoleName(?string $role): string
     {
-        $role = $this->string('role')->toString();
-
         return match ($role) {
             'admin' => 'admin',
             'frontdesk' => 'frontdesk',

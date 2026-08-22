@@ -5,6 +5,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import DeleteUserForm from './Partials/DeleteUserForm.vue';
 import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm.vue';
 import UpdatePasswordForm from './Partials/UpdatePasswordForm.vue';
+import UpdateTwoFactorForm from './Partials/UpdateTwoFactorForm.vue';
 
 defineProps({
     mustVerifyEmail: {
@@ -47,6 +48,12 @@ const roleName = computed(() => page.props.auth?.user?.role_name || null);
                     class="bg-white p-4 shadow sm:rounded-lg sm:p-8"
                 >
                     <UpdatePasswordForm class="max-w-xl" />
+                </div>
+                <div
+                    v-if="roleName === 'admin'"
+                    class="bg-white p-4 shadow sm:rounded-lg sm:p-8"
+                >
+                    <UpdateTwoFactorForm class="max-w-xl" />
                 </div>
                 <div
                     v-if="roleName !== 'admin'"

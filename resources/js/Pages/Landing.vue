@@ -32,7 +32,7 @@ import { Link } from '@inertiajs/vue3';
                         :href="route('login')"
                         class="w-full rounded-lg bg-[#800000] px-8 py-4 text-lg font-semibold text-white shadow-sm transition hover:bg-[#600000] sm:w-64"
                     >
-                        Staff Login
+                     Login
                     </Link>
 
                 </div>

@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import { Link, router, useForm } from '@inertiajs/vue3'
-import { inject } from 'vue'
+import { inject, ref } from 'vue'
 
 const props = defineProps({
   user: {
@@ -79,6 +79,59 @@ async function resetPassword() {
       })
     },
   })
+}
+
+const twoFactorProcessing = ref(false)
+
+async function toggleTwoFactor() {
+  const enabling = !props.user.two_factor_enabled
+
+  const confirmation = await swal?.fire({
+    icon: 'warning',
+    title: enabling ? 'Enable two-factor authentication?' : 'Disable two-factor authentication?',
+    text: enabling
+      ? 'This user will be required to verify a code by email on their next login.'
+      : 'This user will be able to log in without an email verification code.',
+    showCancelButton: true,
+    confirmButtonText: enabling ? 'Yes, enable' : 'Yes, disable',
+    cancelButtonText: 'Cancel',
+    confirmButtonColor: '#800000',
+    cancelButtonColor: '#6b7280',
+    reverseButtons: true,
+  })
+
+  if (confirmation && !confirmation.isConfirmed) {
+    return
+  }
+
+  twoFactorProcessing.value = true
+
+  router.patch(
+    route(enabling ? 'admin.users.two-factor.enable' : 'admin.users.two-factor.disable', props.user.id),
+    {},
+    {
+      preserveScroll: true,
+      onSuccess: () => {
+        swal?.fire({
+          icon: 'success',
+          title: enabling ? '2FA enabled' : '2FA disabled',
+          text: enabling
+            ? 'Two-factor authentication has been enabled for this account.'
+            : 'Two-factor authentication has been disabled for this account.',
+        })
+      },
+      onError: () => {
+        swal?.fire({
+          icon: 'error',
+          title: 'Update failed',
+          text: 'Unable to update two-factor authentication right now.',
+        })
+      },
+      onFinish: () => {
+        twoFactorProcessing.value = false
+      },
+    }
+  )
 }
 </script>
 
@@ -173,6 +226,31 @@ async function resetPassword() {
             <p v-else class="text-sm font-medium text-gray-500">
               Password reset for the current signed-in admin is disabled for now.
             </p>
+          </div>
+        </div>
+
+        <div class="mt-6 rounded-lg border border-gray-200 bg-gray-50 p-5">
+          <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 class="text-lg font-semibold text-[#800000]">Two-Factor Authentication</h2>
+              <p class="mt-1 text-sm text-gray-600">
+                Status:
+                <span :class="props.user.two_factor_enabled ? 'font-semibold text-green-700' : 'font-semibold text-red-700'">
+                  {{ props.user.two_factor_enabled ? 'Enabled' : 'Disabled' }}
+                </span>
+              </p>
+            </div>
+            <button
+              type="button"
+              :disabled="twoFactorProcessing"
+              class="rounded-lg border px-4 py-2 font-semibold transition disabled:opacity-50"
+              :class="props.user.two_factor_enabled
+                ? 'border-red-600 text-red-600 hover:bg-red-600 hover:text-white'
+                : 'border-green-600 text-green-600 hover:bg-green-600 hover:text-white'"
+              @click="toggleTwoFactor"
+            >
+              {{ props.user.two_factor_enabled ? 'Disable 2FA' : 'Enable 2FA' }}
+            </button>
           </div>
         </div>
       </div>

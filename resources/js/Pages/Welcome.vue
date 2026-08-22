@@ -10,14 +10,9 @@ defineProps({
     status: {
         type: String,
     },
-    roles: {
-        type: Array,
-        default: () => [],
-    },
 });
 
 const form = useForm({
-    role: "frontdesk",
     email: "",
     password: "",
     remember: false,
@@ -76,7 +71,7 @@ const submit = () => {
                     <h2
                         class="text-center text-2xl font-bold text-[#800000] mb-2"
                     >
-                        Staff Login
+                        Login
                     </h2>
                     <p class="text-center text-gray-600 mb-6 text-sm">
                         For authorized personnel only
@@ -92,32 +87,6 @@ const submit = () => {
 
                     <!-- Form -->
                     <form @submit.prevent="submit" class="space-y-5">
-                        <div>
-                            <label
-                                class="block text-sm font-medium text-gray-700 mb-2"
-                                >Login As</label
-                            >
-                            <select
-                                v-model="form.role"
-                                class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#800000] focus:border-[#800000]"
-                                required
-                            >
-                                <option
-                                    v-for="role in roles"
-                                    :key="role.value"
-                                    :value="role.value"
-                                >
-                                    {{ role.label }}
-                                </option>
-                            </select>
-                            <div
-                                v-if="form.errors.role"
-                                class="text-red-500 text-sm mt-1"
-                            >
-                                {{ form.errors.role }}
-                            </div>
-                        </div>
-
                         <!-- Email -->
                         <div>
                             <label

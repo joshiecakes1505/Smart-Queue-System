@@ -118,7 +118,7 @@ class UserController extends Controller
             ->get(['id', 'name']);
 
         return Inertia::render('Admin/Users/Edit', [
-            'user' => $user->only(['id', 'name', 'email', 'role_id']),
+            'user' => $user->only(['id', 'name', 'email', 'role_id', 'two_factor_enabled']),
             'roles' => $roles,
             'authUserId' => auth('admin')->id(),
         ]);
@@ -141,6 +141,20 @@ class UserController extends Controller
         $this->sendAccountCreatedEmail($user);
 
         return redirect()->route('admin.users.edit', $user)->with('success', 'Password reset to the default value and email sent.');
+    }
+
+    public function enableTwoFactor(User $user)
+    {
+        $user->enableTwoFactor();
+
+        return back()->with('success', 'Two-factor authentication enabled for this account.');
+    }
+
+    public function disableTwoFactor(User $user)
+    {
+        $user->disableTwoFactor();
+
+        return back()->with('success', 'Two-factor authentication disabled for this account.');
     }
 
     public function enable(User $user)

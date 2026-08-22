@@ -21,11 +21,6 @@ class AuthenticatedSessionController extends Controller
         return Inertia::render('Welcome', [
             'canResetPassword' => Route::has('password.request'),
             'status' => session('status'),
-            'roles' => [
-                ['value' => 'admin', 'label' => 'Admin'],
-                ['value' => 'frontdesk', 'label' => 'Front Desk'],
-                ['value' => 'cashier', 'label' => 'Cashier'],
-            ],
         ]);
     }
 
@@ -44,6 +39,18 @@ class AuthenticatedSessionController extends Controller
         // Redirect based on user role
         $user = Auth::guard($guard)->user();
         $roleName = $user->role?->name;
+
+        //accounts with 2FA disabled by the admin skip straight to their dashboard
+        if (! $user->two_factor_enabled) {
+            session(['2fa_verified' => true]);
+
+            return match ($roleName) {
+                'admin' => redirect()->route('admin.dashboard'),
+                'frontdesk' => redirect()->route('frontdesk.queues.index'),
+                'cashier' => redirect()->route('cashier.index'),
+                default => redirect()->route('dashboard'),
+            };
+        }
 
         //generating two factor code and expiration
         $user->two_factor_code = rand(100000, 999999);

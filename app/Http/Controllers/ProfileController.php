@@ -41,6 +41,26 @@ class ProfileController extends Controller
     }
 
     /**
+     * Enable two-factor authentication for the current user.
+     */
+    public function enableTwoFactor(Request $request): RedirectResponse
+    {
+        $request->user()->enableTwoFactor();
+
+        return back();
+    }
+
+    /**
+     * Disable two-factor authentication for the current user.
+     */
+    public function disableTwoFactor(Request $request): RedirectResponse
+    {
+        $request->user()->disableTwoFactor();
+
+        return back();
+    }
+
+    /**
      * Delete the user's account.
      */
     public function destroy(Request $request): RedirectResponse

@@ -53,6 +53,7 @@ class User extends Authenticatable
             'last_login_at' => 'datetime',
             'deleted_at' => 'datetime',
             'password' => 'hashed',
+            'two_factor_enabled' => 'boolean',
         ];
     }
 
@@ -94,6 +95,20 @@ class User extends Authenticatable
     {
         $this->forceFill([
             'last_login_at' => now(),
+        ])->save();
+    }
+
+    public function enableTwoFactor(): void
+    {
+        $this->forceFill([
+            'two_factor_enabled' => true,
+        ])->save();
+    }
+
+    public function disableTwoFactor(): void
+    {
+        $this->forceFill([
+            'two_factor_enabled' => false,
         ])->save();
     }
 
