@@ -108,7 +108,7 @@ Refer to the project documentation for detailed deployment and testing procedure
 The complete source code of the **Smart Queue System** is available through the project's GitHub repository.
 
 **GitHub Repository:**
-`[PASTE YOUR GITHUB REPOSITORY LINK HERE]`
+`https://github.com/joshiecakes1505/Smart-Queue-System`
 
 > Replace the placeholder above with the official GitHub repository URL before submitting the project documentation.
 
