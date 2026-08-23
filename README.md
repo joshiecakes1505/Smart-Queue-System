@@ -22,6 +22,3 @@ A companion Windows USB ESC/POS print service is available in [`print-service/`]
 3. Configure your environment
 4. Run the application
 
-## License
-
-MIT
