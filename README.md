@@ -110,8 +110,6 @@ The complete source code of the **Smart Queue System** is available through the 
 **GitHub Repository:**
 `https://github.com/joshiecakes1505/Smart-Queue-System`
 
-> Replace the placeholder above with the official GitHub repository URL before submitting the project documentation.
-
 ## Capstone Project
 
 This system was developed as part of a capstone project in **Bachelor of Science in Information Systems**.
