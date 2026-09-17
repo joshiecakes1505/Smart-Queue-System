@@ -1,0 +1,3 @@
+Introducing the Smart Cashier Queuing System, built for Batangas Eastern Colleges: QR-coded queue tickets, a display board that calls numbers out loud, live position and wait times on any phone, and silent thermal receipt printing.
+
+Laravel 12, Vue + Inertia, MySQL. Capstone project — defended.
