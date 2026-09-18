@@ -48,8 +48,11 @@ const statusText = computed(() => {
       return `Now called at ${queueData.value.cashier_window || 'Cashier Window'}`
     case 'completed':
       return 'Service completed'
-    case 'skipped':
-      return `Skipped — you will automatically return to the queue in about 5 minutes (attempt ${queueData.value.skip_count || 1} of ${queueData.value.max_attempts || 2}).`
+    case 'skipped': {
+      const delayMinutes = queueData.value.reinstatement_delay_minutes ?? 3
+      const delayUnit = delayMinutes === 1 ? 'minute' : 'minutes'
+      return `Skipped — you will automatically return to the queue in about ${delayMinutes} ${delayUnit} (attempt ${queueData.value.skip_count || 1} of ${queueData.value.max_attempts || 2}).`
+    }
     case 'expired':
       return 'This queue has expired after reaching the maximum number of automatic reinstatements. Please proceed to the frontdesk for assistance.'
     case 'waiting':

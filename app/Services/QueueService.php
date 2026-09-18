@@ -243,7 +243,7 @@ class QueueService
      */
     public function autoReinstateSweep(): array
     {
-        $delayMinutes = (int) config('ticketing.reinstatement_delay_minutes', 5);
+        $delayMinutes = (int) config('ticketing.reinstatement_delay_minutes', 3);
         $maxReinstatements = (int) config('ticketing.max_reinstatements', 2);
         $cutoff = now()->subMinutes($delayMinutes);
 

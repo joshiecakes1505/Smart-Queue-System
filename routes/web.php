@@ -85,7 +85,7 @@ Route::middleware(['auth:cashier', 'role:cashier'])->prefix('cashier')->name('ca
 });
 
 // Public endpoints
-Route::get('/public/live', [PublicQueueController::class, 'liveView'])->name('public.live');
+Route::get('/queue-live', [PublicQueueController::class, 'liveView'])->name('public.live');
 Route::get('/queue/{queue_number}', [PublicQueueController::class, 'showQueueByNumber'])
     ->middleware('signed')
     ->name('public.queue.show');

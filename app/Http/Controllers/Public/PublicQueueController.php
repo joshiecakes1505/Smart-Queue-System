@@ -134,6 +134,7 @@ class PublicQueueController extends Controller
         }
 
         $maxAttempts = (int) config('ticketing.max_reinstatements', 2);
+        $reinstatementDelayMinutes = (int) config('ticketing.reinstatement_delay_minutes', 3);
         $skipCount = (int) $queue->skip_count;
 
         return response()->json([
@@ -157,6 +158,7 @@ class PublicQueueController extends Controller
             'skip_count' => $skipCount,
             'max_attempts' => $maxAttempts,
             'remaining_attempts' => max($maxAttempts - $skipCount, 0),
+            'reinstatement_delay_minutes' => $reinstatementDelayMinutes,
         ]);
     }
 

@@ -91,7 +91,7 @@ const announceQueueUpdates = (windows = []) => {
 
 const fetchLiveData = async () => {
   try {
-    const response = await fetch('/public/live')
+    const response = await fetch(window.route('public.live'))
     if (!response.ok) return
 
     const latestData = await response.json()
