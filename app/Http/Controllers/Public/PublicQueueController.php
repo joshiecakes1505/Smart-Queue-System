@@ -51,7 +51,7 @@ class PublicQueueController extends Controller
 
         $next = Queue::where('status', Queue::STATUS_WAITING)
             ->with(['serviceCategory'])
-            ->orderByRaw("CASE WHEN client_type IN ('senior_citizen', 'high_priority') THEN 0 ELSE 1 END")
+            ->orderByRaw("CASE WHEN client_type = 'priority' THEN 0 ELSE 1 END")
             ->orderBy('created_at', 'asc')
             ->limit(10)
             ->get()

@@ -420,27 +420,27 @@ const formatTime = (datetime) => {
 };
 
 const queueTheme = (clientType) => {
-    if (clientType === 'senior_citizen' || clientType === 'high_priority') {
+    if (clientType === 'priority') {
         return {
-            panel: 'bg-blue-700 text-white',
-            number: 'text-blue-700',
-            chip: 'bg-blue-100 text-blue-800',
+            panel: 'bg-red-600 text-white',
+            number: 'text-red-600',
+            chip: 'bg-red-100 text-red-800',
         };
     }
 
     if (clientType === 'parent' || clientType === 'visitor') {
         return {
-            panel: 'bg-orange-600 text-white',
-            number: 'text-orange-600',
-            chip: 'bg-orange-100 text-orange-800',
+            panel: 'bg-green-700 text-white',
+            number: 'text-green-700',
+            chip: 'bg-green-100 text-green-800',
         };
     }
 
     // student keeps its own (non-priority) tier.
     return {
-        panel: 'bg-[#800000] text-white',
-        number: 'text-[#800000]',
-        chip: 'bg-[#fdf2f2] text-[#800000]',
+        panel: 'bg-blue-600 text-white',
+        number: 'text-blue-600',
+        chip: 'bg-blue-100 text-blue-800',
     };
 };
 

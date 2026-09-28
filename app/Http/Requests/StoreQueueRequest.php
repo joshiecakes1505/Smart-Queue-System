@@ -22,7 +22,7 @@ class StoreQueueRequest extends FormRequest
             'service_category_ids' => ['nullable', 'array', 'min:1'],
             'service_category_ids.*' => ['integer', 'exists:service_categories,id'],
             'client_name' => ['nullable', 'string', 'max:191'],
-            'client_type' => ['required', 'string', 'in:student,parent,visitor,senior_citizen,high_priority'],
+            'client_type' => ['required', 'string', 'in:student,parent,visitor,priority'],
             'phone' => ['nullable', 'string', 'max:50'],
             'note' => ['nullable', 'string', 'max:1000'],
         ];

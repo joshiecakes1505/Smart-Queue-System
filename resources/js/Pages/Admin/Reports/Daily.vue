@@ -70,26 +70,41 @@ const clientTypeLabel = (type) => {
     student: 'Student',
     parent: 'Parent',
     visitor: 'Visitor',
-    senior_citizen: 'Senior Citizen (Priority)',
-    high_priority: 'High Priority',
+    priority: 'Priority',
   };
 
   return map[type] || type;
 };
 
-const STATUS_COLORS = {
-  waiting: '#FFC107',
-  called: '#2196F3',
-  completed: '#22C55E',
-  skipped: '#EF4444',
+// One palette for every chart on this page. Each hue sits on the same
+// saturation/lightness step, so the five charts read as a single system
+// rather than six unrelated colour choices.
+const PALETTE = {
+  brand: '#9F1239',   // deep rose, anchors single-series charts
+  brandFill: 'rgba(159, 18, 57, 0.12)',
+  red: '#DC2626',
+  amber: '#D97706',
+  green: '#16A34A',
+  emerald: '#059669',
+  blue: '#2563EB',
+  neutral: '#9CA3AF',
 };
 
+// Status keeps its conventional meaning; only the shades are harmonised.
+const STATUS_COLORS = {
+  waiting: PALETTE.amber,
+  called: PALETTE.blue,
+  completed: PALETTE.green,
+  skipped: PALETTE.red,
+};
+
+// Matches the tier colours used on the board, tracker and cashier screens:
+// Priority red, Student blue, Parent/Visitor green.
 const CLIENT_TYPE_COLORS = {
-  student: '#800000',
-  parent: '#FFC107',
-  visitor: '#2196F3',
-  senior_citizen: '#22C55E',
-  high_priority: '#9C27B0',
+  priority: PALETTE.red,
+  student: PALETTE.blue,
+  parent: PALETTE.green,
+  visitor: PALETTE.emerald,
 };
 
 const statusChartCanvas = ref(null);
@@ -108,7 +123,7 @@ const buildStatusChart = () => {
   const rows = props.metrics.status_breakdown;
   const labels = rows.map((row) => statusLabel(row.status));
   const data = rows.map((row) => row.count);
-  const colors = rows.map((row) => STATUS_COLORS[row.status] || '#9CA3AF');
+  const colors = rows.map((row) => STATUS_COLORS[row.status] || PALETTE.neutral);
 
   if (statusChart) {
     statusChart.data.labels = labels;
@@ -129,7 +144,7 @@ const buildClientChart = () => {
   const rows = props.metrics.client_breakdown;
   const labels = rows.map((row) => clientTypeLabel(row.client_type));
   const data = rows.map((row) => row.count);
-  const colors = rows.map((row) => CLIENT_TYPE_COLORS[row.client_type] || '#9CA3AF');
+  const colors = rows.map((row) => CLIENT_TYPE_COLORS[row.client_type] || PALETTE.neutral);
 
   if (clientChart) {
     clientChart.data.labels = labels;
@@ -167,9 +182,9 @@ const buildCategoryChart = () => {
     data: {
       labels,
       datasets: [
-        { label: 'Total', data: totals, backgroundColor: '#800000' },
-        { label: 'Completed', data: completed, backgroundColor: '#22C55E' },
-        { label: 'Waiting', data: waiting, backgroundColor: '#FFC107' },
+        { label: 'Total', data: totals, backgroundColor: PALETTE.brand },
+        { label: 'Completed', data: completed, backgroundColor: PALETTE.green },
+        { label: 'Waiting', data: waiting, backgroundColor: PALETTE.amber },
       ],
     },
     options: {
@@ -199,8 +214,8 @@ const buildHourlyChart = () => {
       datasets: [{
         label: 'Queues Created',
         data,
-        borderColor: '#800000',
-        backgroundColor: 'rgba(128, 0, 0, 0.1)',
+        borderColor: PALETTE.brand,
+        backgroundColor: PALETTE.brandFill,
         fill: true,
         tension: 0.3,
       }],
@@ -227,7 +242,7 @@ const buildWeekdayChart = () => {
 
   weekdayChart = new Chart(weekdayChartCanvas.value, {
     type: 'bar',
-    data: { labels, datasets: [{ label: 'Queues', data, backgroundColor: '#FFC107' }] },
+    data: { labels, datasets: [{ label: 'Queues', data, backgroundColor: PALETTE.brand }] },
     options: {
       responsive: true,
       scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },

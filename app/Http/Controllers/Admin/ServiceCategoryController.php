@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\CashierWindow;
+use App\Models\Queue;
 use App\Http\Requests\StoreServiceCategoryRequest;
 use App\Http\Requests\UpdateServiceCategoryRequest;
 use App\Models\ServiceCategory;
@@ -19,7 +21,18 @@ class ServiceCategoryController extends Controller
     public function index()
     {
         $categories = ServiceCategory::orderBy('name')->get();
-        return Inertia::render('Admin/ServiceCategories/Index', ['categories' => $categories]);
+        $windows = CashierWindow::query()
+            ->with('assignedUser:id,name')
+            ->withCount(['queues as live_queues_count' => function ($query) {
+                $query->whereIn('status', [Queue::STATUS_WAITING, Queue::STATUS_CALLED]);
+            }])
+            ->orderBy('name')
+            ->get();
+
+        return Inertia::render('Admin/ServiceCategories/Index', [
+            'categories' => $categories,
+            'windows' => $windows,
+        ]);
     }
 
     public function create()

@@ -2,7 +2,9 @@
 import { computed, inject, ref } from 'vue'
 import { Link } from '@inertiajs/vue3'
 import ChatbotWidget from '@/Components/ChatbotWidget.vue'
+import Modal from '@/Components/Modal.vue'
 import { usePolling } from '@/Composables/usePolling'
+import { useQueueNotifications } from '@/Composables/useQueueNotifications'
 import { formatManilaTime } from '@/Utils/dateTime'
 
 const props = defineProps({ queue_number: String, tracking_token: String })
@@ -13,6 +15,26 @@ const loading = ref(true)
 const error = ref(null)
 const cancelling = ref(false)
 const swal = inject('$swal')
+
+// Modal + sound notifications, driven by the poll response below.
+const {
+  activeEvent: notification,
+  soundEnabled,
+  soundBlocked,
+  notify: notifyQueueEvent,
+  dismiss: dismissNotification,
+  toggleSound,
+  enableSound,
+} = useQueueNotifications()
+
+const approachingMessage = computed(() => {
+  const ahead = notification.value?.ahead
+
+  if (!ahead) return 'You are next in line.'
+  if (ahead === 1) return 'There is 1 client ahead of you.'
+
+  return `There are ${ahead} clients ahead of you.`
+})
 
 const nowServingQueues = computed(() => {
   return (liveData.value?.windows || [])
@@ -104,6 +126,7 @@ const fetchQueueData = async () => {
 
     queueData.value = await response.json()
     error.value = null
+    notifyQueueEvent(queueData.value)
   } catch (fetchError) {
     console.error('Failed to fetch queue data:', fetchError)
     error.value = 'Unable to load queue status'
@@ -127,24 +150,24 @@ const fetchAll = async () => {
 }
 
 const queueTheme = (clientType) => {
-  if (clientType === 'senior_citizen' || clientType === 'high_priority') {
+  if (clientType === 'priority') {
     return {
-      numberText: 'text-blue-700',
-      calledBg: 'bg-blue-700',
+      numberText: 'text-red-600',
+      calledBg: 'bg-red-600',
     }
   }
 
   if (clientType === 'parent' || clientType === 'visitor') {
     return {
-      numberText: 'text-orange-600',
-      calledBg: 'bg-orange-600',
+      numberText: 'text-green-700',
+      calledBg: 'bg-green-700',
     }
   }
 
   // student keeps its own (non-priority) tier.
   return {
-    numberText: 'text-[#800000]',
-    calledBg: 'bg-[#800000]',
+    numberText: 'text-blue-600',
+    calledBg: 'bg-blue-600',
   }
 }
 
@@ -218,6 +241,24 @@ usePolling(fetchAll, 2000)
         <p class="text-xs uppercase tracking-wide text-yellow-200">Batangas Eastern Colleges</p>
         <h1 class="text-lg font-semibold">Queue Status Tracker</h1>
         <p class="text-xs text-yellow-100 mt-1">Live updates every 2 seconds</p>
+
+        <button
+          type="button"
+          class="mt-3 inline-flex items-center gap-1.5 rounded-full border border-yellow-200/60 bg-white/10 px-3 py-1.5 text-xs font-semibold text-yellow-100 transition hover:bg-white/20"
+          @click="toggleSound"
+        >
+          <span aria-hidden="true">{{ soundEnabled ? '🔊' : '🔇' }}</span>
+          {{ soundEnabled ? 'Sound On' : 'Sound Off' }}
+        </button>
+
+        <button
+          v-if="soundEnabled && soundBlocked"
+          type="button"
+          class="mt-2 block w-full rounded-lg bg-[#FFC107] px-3 py-2 text-xs font-bold text-[#800000]"
+          @click="enableSound"
+        >
+          🔊 Tap to enable sound
+        </button>
       </div>
 
       <div v-if="loading && !queueData && !error" class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 text-center text-gray-500">
@@ -346,5 +387,48 @@ usePolling(fetchAll, 2000)
     <div class="sm:hidden">
       <ChatbotWidget />
     </div>
+
+    <Modal :show="!!notification" max-width="sm" @close="dismissNotification">
+      <div v-if="notification" class="p-6 text-center">
+        <p class="text-4xl leading-none" aria-hidden="true">🔔</p>
+
+        <p
+          class="mt-3 text-sm font-bold uppercase tracking-wide"
+          :class="notification.kind === 'called' ? 'text-[#800000]' : 'text-amber-600'"
+        >
+          {{ notification.kind === 'called' ? 'Your queue is being called' : 'Your queue is approaching' }}
+        </p>
+
+        <p
+          class="mt-3 text-5xl font-bold leading-none"
+          :class="queueTheme(notification.clientType).numberText"
+        >
+          {{ notification.queueNumber }}
+        </p>
+
+        <p v-if="notification.serviceCategory" class="mt-2 text-sm text-gray-500">
+          {{ notification.serviceCategory }}
+        </p>
+
+        <p class="mt-4 text-base font-semibold text-gray-800">
+          <template v-if="notification.kind === 'called'">
+            {{ notification.window ? `Please proceed to ${notification.window}.` : 'Please proceed to the cashier.' }}
+          </template>
+          <template v-else>{{ approachingMessage }}</template>
+        </p>
+
+        <p v-if="notification.kind === 'approaching'" class="mt-1 text-sm text-gray-600">
+          Please be ready.
+        </p>
+
+        <button
+          type="button"
+          class="mt-6 w-full rounded-lg bg-[#800000] px-4 py-3 text-base font-semibold text-white transition hover:bg-[#600000]"
+          @click="dismissNotification"
+        >
+          OK
+        </button>
+      </div>
+    </Modal>
   </div>
 </template>

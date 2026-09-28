@@ -61,15 +61,15 @@ const formatTime = (datetime) => {
 };
 
 const queueNumberClass = (clientType) => {
-    if (clientType === 'senior_citizen' || clientType === 'high_priority') return 'text-blue-700';
-    if (clientType === 'parent' || clientType === 'visitor') return 'text-orange-600';
-    return 'text-[#800000]';
+    if (clientType === 'priority') return 'text-red-600';
+    if (clientType === 'parent' || clientType === 'visitor') return 'text-green-700';
+    return 'text-blue-600';
 };
 
 const queueChipClass = (clientType) => {
-    if (clientType === 'senior_citizen' || clientType === 'high_priority') return 'bg-blue-100 text-blue-800';
-    if (clientType === 'parent' || clientType === 'visitor') return 'bg-orange-100 text-orange-800';
-    return 'bg-[#fdf2f2] text-[#800000]';
+    if (clientType === 'priority') return 'bg-red-100 text-red-800';
+    if (clientType === 'parent' || clientType === 'visitor') return 'bg-green-100 text-green-800';
+    return 'bg-blue-100 text-blue-800';
 };
 
 const serviceCategoryLabel = (queue) => {
@@ -229,19 +229,10 @@ usePolling(() => {
                                 <input
                                     v-model="form.client_type"
                                     type="radio"
-                                    value="senior_citizen"
+                                    value="priority"
                                     class="w-4 h-4 text-[#800000] border-gray-300 focus:ring-[#800000]"
                                 />
-                                <span class="ml-2 text-sm leading-tight text-gray-700">Senior Citizen (Priority)</span>
-                            </label>
-                            <label class="flex items-start cursor-pointer min-w-0">
-                                <input
-                                    v-model="form.client_type"
-                                    type="radio"
-                                    value="high_priority"
-                                    class="w-4 h-4 text-[#800000] border-gray-300 focus:ring-[#800000]"
-                                />
-                                <span class="ml-2 text-sm leading-tight text-gray-700">High Priority</span>
+                                <span class="ml-2 text-sm leading-tight text-gray-700">Priority</span>
                             </label>
                         </div>
                         <div v-if="form.errors.client_type" class="text-red-500 text-sm mt-1">

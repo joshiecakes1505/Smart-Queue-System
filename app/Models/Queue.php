@@ -19,12 +19,10 @@ class Queue extends Model
     public const CLIENT_TYPE_STUDENT = 'student';
     public const CLIENT_TYPE_PARENT = 'parent';
     public const CLIENT_TYPE_VISITOR = 'visitor';
-    public const CLIENT_TYPE_SENIOR_CITIZEN = 'senior_citizen';
-    public const CLIENT_TYPE_HIGH_PRIORITY = 'high_priority';
+    public const CLIENT_TYPE_PRIORITY = 'priority';
 
     public const PRIORITY_CLIENT_TYPES = [
-        self::CLIENT_TYPE_SENIOR_CITIZEN,
-        self::CLIENT_TYPE_HIGH_PRIORITY,
+        self::CLIENT_TYPE_PRIORITY,
     ];
 
     protected $fillable = [

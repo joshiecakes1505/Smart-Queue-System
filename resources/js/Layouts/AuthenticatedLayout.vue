@@ -45,6 +45,7 @@ const navigationLinks = computed(() => {
             { label: 'Profile', href: route('profile.edit') },
             { label: 'Manage Users', href: route('admin.users.index') },
             { label: 'Service Categories', href: route('admin.service-categories.index') },
+            { label: 'Window Transactions', href: route('admin.transactions.index') },
             { label: 'Reports', href: route('admin.reports.daily') },
             { label: 'Monitoring', href: route('admin.monitoring.index') },
         ];
@@ -59,6 +60,7 @@ const navigationLinks = computed(() => {
     if (roleName.value === 'cashier') {
         return [
             { label: 'Cashier Dashboard', href: route('cashier.index') },
+            { label: 'My Transactions', href: route('cashier.transactions') },
         ];
     }
 
@@ -82,7 +84,7 @@ const navigationLinks = computed(() => {
                             class="h-11 w-11 object-contain"
                         />
                         <div class="min-w-0">
-                            <h1 class="text-base sm:text-lg font-semibold leading-tight">Smart Cashier Queuing System - BEC</h1>
+                            <h1 class="text-base sm:text-lg font-semibold leading-tight">QUEUENAMI - BEC</h1>
                             <p class="text-xs text-yellow-200">{{ title }}</p>
                         </div>
                     </div>

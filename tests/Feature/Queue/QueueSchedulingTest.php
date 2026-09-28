@@ -44,7 +44,7 @@ class QueueSchedulingTest extends TestCase
         $priority = $service->createQueue([
             'service_category_id' => $category->id,
             'client_name' => 'Priority',
-            'client_type' => 'senior_citizen',
+            'client_type' => 'priority',
         ]);
 
         $second = $service->createQueue([
@@ -95,7 +95,7 @@ class QueueSchedulingTest extends TestCase
         $target = $service->createQueue([
             'service_category_id' => $category->id,
             'client_name' => 'Target',
-            'client_type' => 'high_priority',
+            'client_type' => 'priority',
         ]);
 
         $target->refresh();

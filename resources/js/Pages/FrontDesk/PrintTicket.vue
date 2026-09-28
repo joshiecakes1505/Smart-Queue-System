@@ -88,8 +88,7 @@ const clientTypeLabel = (type) => {
         student: 'Student',
         parent: 'Parent',
         visitor: 'Visitor',
-        senior_citizen: 'Senior Citizen (Priority)',
-        high_priority: 'High Priority',
+        priority: 'Priority',
     };
     return labels[type] || type;
 };

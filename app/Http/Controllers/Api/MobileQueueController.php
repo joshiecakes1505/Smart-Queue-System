@@ -45,7 +45,7 @@ class MobileQueueController extends Controller
 
             'client_type' => [
                 'required',
-                'in:student,parent,visitor,senior_citizen,high_priority',
+                'in:student,parent,visitor,priority',
             ],
 
             'service_category_ids' => ['required', 'array', 'min:1'],

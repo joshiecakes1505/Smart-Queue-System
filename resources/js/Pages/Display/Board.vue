@@ -52,6 +52,51 @@ const nextQueueGridClass = computed(() => {
   return 'grid-cols-3'
 })
 
+// The board must fit however many windows the admin has configured, so the
+// column count and type sizes come from the live count instead of being
+// hardcoded to three.
+const windowCount = computed(() => (Array.isArray(data.value.windows) ? data.value.windows.length : 0))
+
+const windowGridClass = computed(() => {
+  const count = windowCount.value
+  if (count <= 1) return 'grid-cols-1'
+  if (count === 2) return 'grid-cols-2'
+  if (count === 3) return 'grid-cols-3'
+  if (count === 4) return 'grid-cols-2'
+  if (count <= 9) return 'grid-cols-3'
+  if (count <= 12) return 'grid-cols-4'
+  return 'grid-cols-5'
+})
+
+// More cards means shorter cards, so step the number down with the count
+// rather than letting it overflow its box.
+const windowNumberSizeClass = computed(() => {
+  const count = windowCount.value
+  if (count <= 2) return 'text-7xl sm:text-8xl lg:text-9xl'
+  if (count <= 4) return 'text-6xl sm:text-7xl lg:text-8xl'
+  if (count <= 6) return 'text-5xl sm:text-6xl lg:text-7xl'
+  if (count <= 9) return 'text-4xl sm:text-5xl lg:text-6xl'
+  return 'text-3xl sm:text-4xl lg:text-5xl'
+})
+
+const windowNameSizeClass = computed(() => {
+  const count = windowCount.value
+  if (count <= 4) return 'text-xl sm:text-2xl lg:text-3xl'
+  if (count <= 9) return 'text-lg sm:text-xl lg:text-2xl'
+  return 'text-base sm:text-lg'
+})
+
+const windowStatusSizeClass = computed(() => {
+  const count = windowCount.value
+  if (count <= 4) return 'text-3xl sm:text-4xl lg:text-5xl'
+  if (count <= 9) return 'text-2xl sm:text-3xl lg:text-4xl'
+  return 'text-xl sm:text-2xl'
+})
+
+// With nothing waiting and nothing returning, the side panel is dead space.
+// Drop it and let the window cards use the full width.
+const showSidePanel = computed(() => hasAnyWaitingQueue.value || hasAnyReinstatableQueue.value)
+
 const nextQueueNumberSizeClass = computed(() => {
   const count = upcomingQueues.value.length
   if (count <= 5) return 'text-3xl sm:text-4xl'
@@ -64,9 +109,9 @@ const nextQueueNumberSizeClass = computed(() => {
 const visibleReinstatedQueues = computed(() => (data.value.reinstated_queues || []).slice(0, 5))
 
 const priorityLegend = [
-  { label: 'Senior Citizen / High Priority', swatch: 'bg-blue-700' },
-  { label: 'Student', swatch: 'bg-[#800000]' },
-  { label: 'Parent / Visitor', swatch: 'bg-orange-600' },
+  { label: 'Priority', swatch: 'bg-red-600' },
+  { label: 'Student', swatch: 'bg-blue-600' },
+  { label: 'Parent / Visitor', swatch: 'bg-green-700' },
 ]
 
 const getWindowAnnouncementKey = (windowData) => {
@@ -198,24 +243,24 @@ const toggleFullscreen = async () => {
 }
 
 const queueTheme = (clientType) => {
-  if (clientType === 'senior_citizen' || clientType === 'high_priority') {
+  if (clientType === 'priority') {
     return {
-      numberText: 'text-blue-700',
-      calledBg: 'bg-blue-700',
+      numberText: 'text-red-600',
+      calledBg: 'bg-red-600',
     }
   }
 
   if (clientType === 'parent' || clientType === 'visitor') {
     return {
-      numberText: 'text-orange-600',
-      calledBg: 'bg-orange-600',
+      numberText: 'text-green-700',
+      calledBg: 'bg-green-700',
     }
   }
 
   // student keeps its own (non-priority) tier.
   return {
-    numberText: 'text-[#800000]',
-    calledBg: 'bg-[#800000]',
+    numberText: 'text-blue-600',
+    calledBg: 'bg-blue-600',
   }
 }
 
@@ -282,7 +327,7 @@ onBeforeUnmount(() => {
 
     <!-- Maroon Header -->
     <header class="relative shrink-0 bg-[#800000] text-white py-3 sm:py-4">
-      <div class="container mx-auto px-4 sm:px-8">
+      <div class="w-full px-3 sm:px-5">
         <div class="flex flex-col gap-4 lg:flex-row lg:justify-between lg:items-center">
           <div>
             <div class="flex items-center gap-4">
@@ -292,14 +337,14 @@ onBeforeUnmount(() => {
                 class="h-12 w-12 sm:h-16 sm:w-16 object-contain"
               />
               <div>
-                <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight">Smart Cashier Queuing System</h1>
+                <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight">QUEUENAMI</h1>
                 <p class="text-yellow-200 text-sm sm:text-base lg:text-lg mt-1">Batangas Eastern Colleges</p>
               </div>
             </div>
           </div>
           <div class="text-left lg:text-right lg:mr-10">
             <p class="text-lg sm:text-xl text-yellow-200">Current Time</p>
-            <p class="mt-1 text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight">{{ formatTime(currentClock) }}</p>
+            <p class="mt-1 text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-tight">{{ formatTime(currentClock) }}</p>
           </div>
         </div>
       </div>
@@ -317,7 +362,7 @@ onBeforeUnmount(() => {
     <!-- Main Content -->
     <main
       class="flex-1 min-h-0 overflow-hidden flex flex-col"
-      :class="isSystemIdle ? 'w-full p-0' : 'container mx-auto px-4 sm:px-8 py-3 sm:py-4'"
+      :class="isSystemIdle ? 'w-full p-0' : 'w-full px-3 sm:px-5 py-2 sm:py-3'"
     >
       <div v-if="isSystemIdle" class="h-full w-full overflow-hidden bg-black">
         <video
@@ -334,7 +379,7 @@ onBeforeUnmount(() => {
 
       <div v-else class="flex-1 min-h-0 flex flex-col lg:flex-row gap-4 lg:gap-6">
         <!-- Now Serving (primary focal area) -->
-        <section class="flex-1 min-h-0 min-w-0 flex flex-col lg:basis-2/3">
+        <section class="flex-1 min-h-0 min-w-0 flex flex-col" :class="showSidePanel ? 'lg:basis-2/3' : 'lg:basis-full'">
           <div class="shrink-0 mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <h2 class="text-xl sm:text-2xl lg:text-3xl font-bold text-[#800000]">Now Serving</h2>
 
@@ -354,28 +399,29 @@ onBeforeUnmount(() => {
           <div class="flex-1 min-h-0 overflow-hidden">
             <div
               v-if="data.windows.length > 0"
-              class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 auto-rows-fr gap-3 lg:gap-4 h-full"
+              class="grid auto-rows-fr gap-2 lg:gap-3 h-full"
+              :class="windowGridClass"
             >
               <div
                 v-for="window in data.windows"
                 :key="window.id"
-                class="bg-white border-4 border-[#800000] rounded-lg p-3 sm:p-4 flex flex-col justify-center min-h-0"
+                class="bg-white border-4 border-[#800000] rounded-lg p-2 sm:p-3 flex flex-col justify-evenly min-h-0 overflow-hidden"
               >
                 <!-- Window Name -->
-                <div class="shrink-0 bg-[#800000] text-white text-center py-1.5 rounded-lg mb-2">
-                  <h3 class="text-lg sm:text-xl lg:text-2xl font-bold">{{ window.name }}</h3>
+                <div class="shrink-0 bg-[#800000] text-white text-center py-1 rounded-lg">
+                  <h3 class="font-bold leading-tight truncate" :class="windowNameSizeClass">{{ window.name }}</h3>
                 </div>
 
                 <!-- Current Queue -->
-                <div class="text-center mb-2">
-                  <p class="text-sm sm:text-base font-bold text-gray-600 mb-1">NOW SERVING</p>
+                <div class="min-h-0 text-center">
+                  <p class="text-xs sm:text-sm font-bold tracking-wide text-gray-600">NOW SERVING</p>
                   <div
-                    class="rounded-lg py-3 sm:py-4 lg:py-5"
+                    class="mt-1 rounded-lg py-2 sm:py-3"
                     :class="window.current ? queueTheme(window.current?.client_type).calledBg : 'bg-[#FFC107]'"
                   >
                     <p
-                      class="text-4xl sm:text-5xl lg:text-6xl font-bold leading-none"
-                      :class="window.current ? 'text-white' : 'text-[#800000]'"
+                      class="font-bold leading-none whitespace-nowrap"
+                      :class="[windowNumberSizeClass, window.current ? 'text-white' : 'text-[#800000]']"
                     >
                       {{ window.current?.queue_number ?? '—' }}
                     </p>
@@ -383,9 +429,9 @@ onBeforeUnmount(() => {
                 </div>
 
                 <!-- Queue Details -->
-                <div class="shrink-0 text-center text-gray-700 space-y-1">
-                  <p class="text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight" :class="isWindowClosed(window) ? 'text-gray-500' : 'text-gray-700'">{{ windowPrimaryStatus(window) }}</p>
-                  <p class="text-lg sm:text-xl lg:text-2xl text-gray-500 leading-tight">{{ windowSecondaryStatus(window) }}</p>
+                <div class="shrink-0 text-center text-gray-700">
+                  <p class="font-bold leading-tight truncate" :class="[windowStatusSizeClass, isWindowClosed(window) ? 'text-gray-500' : 'text-gray-700']">{{ windowPrimaryStatus(window) }}</p>
+                  <p class="truncate text-base leading-tight text-gray-500 sm:text-lg lg:text-xl">{{ windowSecondaryStatus(window) }}</p>
                 </div>
               </div>
             </div>
@@ -398,7 +444,7 @@ onBeforeUnmount(() => {
         </section>
 
         <!-- Side Panel: Up Next / Next in Queue / Reinstated -->
-        <aside class="lg:basis-1/3 min-h-0 min-w-0 flex flex-col gap-3 lg:gap-4 overflow-hidden">
+        <aside v-if="showSidePanel" class="lg:basis-1/3 min-h-0 min-w-0 flex flex-col gap-3 lg:gap-4 overflow-hidden">
           <!-- Up Next Highlight -->
           <div
             v-if="upNextQueue"

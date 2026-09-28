@@ -35,7 +35,7 @@ class ChatbotService
         ],
         'priority' => [
             'question' => 'Are there priority services?',
-            'answer' => 'Yes! We offer priority service for senior citizens and individuals with high priority needs. When you register, you can select your client type, and the system will automatically prioritize you according to our service category rules.',
+            'answer' => 'Yes! We offer priority service. When you register, the front desk can tag you as Priority (for example senior citizens, PWDs, or pregnant clients), and the system will automatically move you ahead according to our service category rules.',
             'keywords' => ['priority', 'senior', 'citizen', 'high priority', 'service'],
         ],
         'multiple-services' => [

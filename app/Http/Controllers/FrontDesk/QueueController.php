@@ -27,7 +27,7 @@ class QueueController extends Controller
         $categories = ServiceCategory::query()->orderBy('name', 'asc')->get();
         $waitingQueues = Queue::query()->with('serviceCategory')
             ->where('status', Queue::STATUS_WAITING)
-            ->orderByRaw("CASE WHEN client_type IN ('senior_citizen', 'high_priority') THEN 0 ELSE 1 END")
+            ->orderByRaw("CASE WHEN client_type = 'priority' THEN 0 ELSE 1 END")
             ->orderBy('created_at', 'asc')
             ->get()
             ->map(function (Queue $queue) {

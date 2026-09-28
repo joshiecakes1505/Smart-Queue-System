@@ -8,8 +8,11 @@ use App\Http\Controllers\Admin\ReportController as AdminReportController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\BackupController as AdminBackupController;
 use App\Http\Controllers\Admin\MonitoringController as AdminMonitoringController;
+use App\Http\Controllers\Admin\TransactionController as AdminTransactionController;
+use App\Http\Controllers\Admin\CashierWindowController as AdminCashierWindowController;
 use App\Http\Controllers\FrontDesk\QueueController as FrontDeskQueueController;
 use App\Http\Controllers\Cashier\CashierController as CashierController;
+use App\Http\Controllers\Cashier\TransactionController as CashierTransactionController;
 use App\Http\Controllers\Public\PublicQueueController as PublicQueueController;
 use App\Http\Controllers\Display\DisplayController as DisplayController;
 use App\Http\Controllers\Api\QRCodeController as QRCodeController;
@@ -44,6 +47,9 @@ Route::middleware(['auth:admin', 'role:admin'])->prefix('admin')->name('admin.')
     Route::get('dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
     Route::get('backups/download-latest', [AdminBackupController::class, 'downloadLatest'])->name('backups.download-latest');
     Route::post('cashier-windows/{cashierWindow}/assign', [AdminUserController::class, 'assignCashier'])->name('cashier-windows.assign');
+    Route::post('cashier-windows', [AdminCashierWindowController::class, 'store'])->name('cashier-windows.store');
+    Route::patch('cashier-windows/{cashierWindow}', [AdminCashierWindowController::class, 'update'])->name('cashier-windows.update');
+    Route::delete('cashier-windows/{cashierWindow}', [AdminCashierWindowController::class, 'destroy'])->name('cashier-windows.destroy');
     Route::post('users/{user}/reset-password', [AdminUserController::class, 'resetPassword'])->name('users.reset-password');
     Route::patch('users/{user}/enable', [AdminUserController::class, 'enable'])->name('users.enable');
     Route::patch('users/{user}/two-factor/enable', [AdminUserController::class, 'enableTwoFactor'])->name('users.two-factor.enable');
@@ -54,6 +60,7 @@ Route::middleware(['auth:admin', 'role:admin'])->prefix('admin')->name('admin.')
     Route::patch('users/{id}/restore', [AdminUserController::class, 'restoreDeleted'])->name('users.restore');
     Route::resource('users', AdminUserController::class)->except(['show']);
     Route::resource('service-categories', AdminServiceCategoryController::class)->except(['show']);
+    Route::get('transactions', [AdminTransactionController::class, 'index'])->name('transactions.index');
     Route::get('reports/daily', [AdminReportController::class, 'daily'])->name('reports.daily');
     Route::get('reports/daily/pdf', [AdminReportController::class, 'dailyPdf'])->name('reports.daily.pdf');
     Route::get('monitoring', [AdminMonitoringController::class, 'index'])->name('monitoring.index');
@@ -77,6 +84,7 @@ Route::middleware(['auth:frontdesk', 'role:frontdesk'])->group(function () {
 // Cashier routes
 Route::middleware(['auth:cashier', 'role:cashier'])->prefix('cashier')->name('cashier.')->group(function () {
     Route::get('/', [CashierController::class, 'index'])->name('index');
+    Route::get('transactions', [CashierTransactionController::class, 'index'])->name('transactions');
     Route::post('call-next', [CashierController::class, 'callNext'])->name('callNext');
     Route::post('{queue}/skip', [CashierController::class, 'skip'])->name('skip');
     Route::post('{queue}/recall', [CashierController::class, 'recall'])->name('recall');
